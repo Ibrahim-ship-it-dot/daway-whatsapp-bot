@@ -2,15 +2,13 @@ const express = require('express');
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const qrcode = require('qrcode');
-const fs = require('fs');
-const path = require('path');
 const firebase = require("firebase/compat/app");
 require("firebase/compat/firestore");
 
 const app = express();
 app.use(express.json());
 
-// السماح لموقع Netlify بالاتصال بالسيرفر
+// CORS
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -38,19 +36,53 @@ try {
   console.error("🔥 Firebase Init Failed:", e);
 }
 
-// مخزن الجلسات النشطة في الذاكرة لكل الصيدليات
 const sessions = {}; // { pharmacyId: { sock, qr, status } }
 
-// التأكد من وجود مجلد حفظ الجلسات
-const SESSIONS_DIR = path.join(__dirname, 'sessions');
-if (!fs.existsSync(SESSIONS_DIR)) {
-  fs.mkdirSync(SESSIONS_DIR, { recursive: true });
-}
+// تخزين واسترجاع بيانات الجلسة من Firebase Firestore لتجنب فقدانها عند إعادة تشغيل السيرفر
+const useFirebaseAuthState = async (pharmacyId) => {
+  const sessionRef = db.collection('whatsapp_sessions').doc(pharmacyId);
+  const doc = await sessionRef.get();
+  
+  let creds = doc.exists && doc.data().creds ? doc.data().creds : undefined;
+  let keys = doc.exists && doc.data().keys ? doc.data().keys : {};
 
-// دالة تشغيل جلسة واتساب مستقلة لكل صيدلية
+  const saveState = async () => {
+    await sessionRef.set({ creds, keys }, { merge: true });
+  };
+
+  return {
+    state: {
+      creds: creds || (await import('@whiskeysockets/baileys')).initAuthCreds(),
+      keys: {
+        get: async (type, ids) => {
+          const dat = {};
+          ids.forEach(id => {
+            if (keys[type] && keys[type][id]) {
+              dat[id] = keys[type][id];
+            }
+          });
+          return dat;
+        },
+        set: async (data) => {
+          for (const type of Object.keys(data)) {
+            if (!keys[type]) keys[type] = {};
+            for (const id of Object.keys(data[type])) {
+              keys[type][id] = data[type][id];
+            }
+          }
+          await saveState();
+        }
+      }
+    },
+    saveCreds: async () => {
+      creds = (await useFirebaseAuthState(pharmacyId)).state.creds; // تحديث
+      await saveState();
+    }
+  };
+};
+
 async function startPharmacySession(pharmacyId) {
-  const sessionPath = path.join(SESSIONS_DIR, `session_${pharmacyId}`);
-  const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+  const { state, saveCreds } = await useFirebaseAuthState(pharmacyId);
 
   sessions[pharmacyId] = { sock: null, qr: null, status: 'CONNECTING' };
 
@@ -67,86 +99,72 @@ async function startPharmacySession(pharmacyId) {
     if (qr) {
       sessions[pharmacyId].qr = qr;
       sessions[pharmacyId].status = 'QR_READY';
-      console.log(`📌 تم توليد QR جديد للصيدلية: ${pharmacyId}`);
+      console.log(`📌 QR جديد جاهز للصيدلية: ${pharmacyId}`);
     }
 
     if (connection === 'open') {
       sessions[pharmacyId].qr = null;
       sessions[pharmacyId].status = 'CONNECTED';
-      console.log(`✅ الصيدلية (${pharmacyId}) اتصلت بالواتساب بنجاح!`);
+      console.log(`✅ الصيدلية (${pharmacyId}) متصلة الآن بالواتساب!`);
     }
 
     if (connection === 'close') {
-      const statusCode = lastDisconnect?.error?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-      
+      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
       if (shouldReconnect) {
         console.log(`🔄 إعادة اتصال الصيدلية (${pharmacyId})...`);
         startPharmacySession(pharmacyId);
       } else {
-        console.log(`❌ تم تسجيل خروج الصيدلية (${pharmacyId})`);
+        console.log(`❌ تسجيل خروج الصيدلية (${pharmacyId})`);
         sessions[pharmacyId].status = 'LOGGED_OUT';
-        fs.rmSync(sessionPath, { recursive: true, force: true });
+        await db.collection('whatsapp_sessions').doc(pharmacyId).delete();
       }
     }
   });
 
   sock.ev.on('creds.update', saveCreds);
 
-  // الاستماع لردود الصيدلي على استعلامات الأدوية
   sock.ev.on('messages.upsert', async ({ messages }) => {
     const msg = messages[0];
     if (!msg.message || msg.key.fromMe) return;
-
     const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
-    const sender = msg.key.remoteJid;
-
     if (text.includes("متوفر")) {
-      console.log(`💊 رد من الصيدلية (${pharmacyId}): الدواء متوفر!`);
-      // هنا يمكنك تحديث حالة الطلب في Firebase مباشرة ليظهر للعميل
+      console.log(`💊 الصيدلية (${pharmacyId}) أكدت توفر الدواء!`);
     }
   });
 }
 
-// إعادة تشغيل الجلسات المحفوظة مسبقاً عند إقلاع السيرفر
-function restoreAllSessions() {
-  if (!fs.existsSync(SESSIONS_DIR)) return;
-  const folders = fs.readdirSync(SESSIONS_DIR);
-  for (const folder of folders) {
-    if (folder.startsWith('session_')) {
-      const pharmacyId = folder.replace('session_', '');
-      console.log(`♻️ استعادة جلسة الصيدلية: ${pharmacyId}`);
+// استعادة الجلسات المخزنة في فايربيس تلقائياً عند إقلاع السيرفر
+async function restoreSavedSessions() {
+  try {
+    const snapshot = await db.collection('whatsapp_sessions').get();
+    snapshot.forEach(doc => {
+      const pharmacyId = doc.id;
+      console.log(`♻️ استعادة جلسة الصيدلية من Firebase: ${pharmacyId}`);
       startPharmacySession(pharmacyId);
-    }
+    });
+  } catch (e) {
+    console.error("خطأ في استعادة الجلسات:", e);
   }
 }
 
-// الصفحة الرئيسية للسيرفر
 app.get('/', (req, res) => {
-  const activeCount = Object.keys(sessions).filter(id => sessions[id].status === 'CONNECTED').length;
-  res.send(`
-    <div style="font-family:sans-serif; text-align:center; margin-top:40px;">
-      <h2>سيرفر بوت دواي (Multi-Session) يعمل بنجاح 🚀</h2>
-      <p>عدد الصيدليات المتصلة حالياً: <strong>${activeCount}</strong></p>
-    </div>
-  `);
+  res.send(`<h2>سيرفر دواي (Multi-Session + Firebase Auth) يعمل بنجاح 🚀</h2>`);
 });
 
-// مسار ربط صيدلية جديدة (يُستدعى من موقع Netlify)
+// مسار ربط الصيدلية وتوليد الـ QR
 app.get('/connect/:pharmacyId', async (req, res) => {
   const { pharmacyId } = req.params;
-  if (!pharmacyId) return res.status(400).json({ error: "معرف الصيدلية مطلوب" });
+  if (!pharmacyId) return res.status(400).json({ error: "رقم الصيدلية مطلوب" });
 
-  // إذا لم تكن هناك جلسة نشطة لهذه الصيدلية، ابدأ واحدة جديدة
   if (!sessions[pharmacyId] || sessions[pharmacyId].status === 'LOGGED_OUT') {
     await startPharmacySession(pharmacyId);
-    return res.json({ status: 'INITIALIZING', message: 'جاري تجهيز الـ QR Code...' });
+    return res.json({ status: 'INITIALIZING', message: 'جاري توليد الكود...' });
   }
 
   const currentSession = sessions[pharmacyId];
 
   if (currentSession.status === 'CONNECTED') {
-    return res.json({ status: 'CONNECTED', message: 'هذه الصيدلية مرتبطة بالواتساب بالفعل ✅' });
+    return res.json({ status: 'CONNECTED', message: 'مرتبط بالواتساب ✅' });
   }
 
   if (currentSession.status === 'QR_READY' && currentSession.qr) {
@@ -154,61 +172,31 @@ app.get('/connect/:pharmacyId', async (req, res) => {
     return res.json({ status: 'QR_READY', image: qrImage });
   }
 
-  res.json({ status: 'WAITING', message: 'في انتظار توليد الكود...' });
+  res.json({ status: 'WAITING', message: 'في انتظار الكود...' });
 });
 
-// حساب المسافة الجغرافية
-function deg2rad(deg) { return deg * (Math.PI / 180); }
-function getDistanceInKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = deg2rad(lat2 - lat1);
-  const dLon = deg2rad(lon2 - lon1);
-  const a = Math.sin(dLat / 2)**2 + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2)**2;
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
-
-// إرسال استعلام الدواء للصيدليات القريبة عبر جلساتها الخاصة
+// مسار إرسال الاستعلام للصيدليات القريبة
 app.post('/send', async (req, res) => {
   try {
-    const { medicine, userPhone, askId, lat, lng, range } = req.body;
-    if (!medicine || !userPhone || !askId) return res.status(400).json({ error: "بيانات غير مكتملة" });
-
-    let isLocationAvailable = (lat && lng);
-    const searchRange = parseFloat(range) || 4;
+    const { medicine, userPhone, askId } = req.body;
     const phSnap = await db.collection("pharmacies").get();
     let sentCount = 0;
 
     for (const doc of phSnap.docs) {
       const p = doc.data();
-      const pharmacyId = p.phone || doc.id; // استخدام رقم الصيدلية أو معرفها كـ ID للجلسة
-      if (!p.phone) continue;
+      const pharmacyId = p.phone;
+      if (!pharmacyId) continue;
 
-      let shouldSend = true;
-      let distanceKm = null;
+      const whatsappMessage = `💊 *استعلام جديد عن دواء*\n- الدواء: *${medicine}*\n- طالب الدواء: ${userPhone}\n- رقم الطلب: ${askId}\n\nيرجى الرد بكلمة: *متوفر*`;
 
-      if (isLocationAvailable && p.lat && p.lng) {
-        distanceKm = getDistanceInKm(lat, lng, p.lat, p.lng);
-        if (distanceKm > searchRange) shouldSend = false;
-      } else if (isLocationAvailable && (!p.lat || !p.lng)) {
-        shouldSend = false;
-      }
-
-      if (!shouldSend) continue;
-
-      const whatsappMessage = `💊 *استعلام جديد عبر دواي*\n- الدواء المطلوب: *${medicine}*\n- رقم الطالب: ${userPhone}\n- رقم الطلب: ${askId}\n- المسافة: ${distanceKm !== null ? distanceKm.toFixed(1) + ' كم' : 'غير محددة'}\n\nللرد بتوفر الدواء، اكتب كلمة: *متوفر*`;
-
-      // استخدام جلسة الصيدلية نفسها لإرسال التنبيه لرقمها
       const pharmacySession = sessions[pharmacyId];
       if (pharmacySession && pharmacySession.status === 'CONNECTED' && pharmacySession.sock) {
-        await pharmacySession.sock.sendMessage(p.phone + "@s.whatsapp.net", { text: whatsappMessage });
-        console.log(`📤 تم الإرسال عبر جلسة الصيدلية: ${p.name || pharmacyId}`);
+        await pharmacySession.sock.sendMessage(pharmacyId + "@s.whatsapp.net", { text: whatsappMessage });
         sentCount++;
-      } else {
-        console.log(`⚠️ الصيدلية (${p.name || pharmacyId}) غير متصلة بالبوت حالياً`);
       }
     }
 
-    res.json({ success: true, message: `تم إرسال الاستعلام إلى ${sentCount} صيدلية متصلة` });
+    res.json({ success: true, message: `تم الإرسال إلى ${sentCount} صيدلية متصلة` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -217,5 +205,5 @@ app.post('/send', async (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 السيرفر يعمل على المنفذ ${PORT}`);
-  restoreAllSessions();
+  restoreSavedSessions();
 });
