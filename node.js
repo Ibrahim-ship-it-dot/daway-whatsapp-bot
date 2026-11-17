@@ -38,7 +38,7 @@ try {
 
 const sessions = {}; // { pharmacyId: { sock, qr, status } }
 
-// تخزين واسترجاع بيانات الجلسة من Firebase Firestore لتجنب فقدانها عند إعادة تشغيل السيرفر
+// إدارة المصادقة عبر Firebase Firestore لتجنب ضياع الجلسات
 const useFirebaseAuthState = async (pharmacyId) => {
   const sessionRef = db.collection('whatsapp_sessions').doc(pharmacyId);
   const doc = await sessionRef.get();
@@ -75,7 +75,7 @@ const useFirebaseAuthState = async (pharmacyId) => {
       }
     },
     saveCreds: async () => {
-      creds = (await useFirebaseAuthState(pharmacyId)).state.creds; // تحديث
+      creds = (await useFirebaseAuthState(pharmacyId)).state.creds;
       await saveState();
     }
   };
@@ -133,13 +133,13 @@ async function startPharmacySession(pharmacyId) {
   });
 }
 
-// استعادة الجلسات المخزنة في فايربيس تلقائياً عند إقلاع السيرفر
+// استعادة الجلسات المخزنة في فايربيس عند الإقلاع
 async function restoreSavedSessions() {
   try {
     const snapshot = await db.collection('whatsapp_sessions').get();
     snapshot.forEach(doc => {
       const pharmacyId = doc.id;
-      console.log(`♻️ استعادة جلسة الصيدلية من Firebase: ${pharmacyId}`);
+      console.log(`♻️ استعادة جلسة الصيدلية: ${pharmacyId}`);
       startPharmacySession(pharmacyId);
     });
   } catch (e) {
@@ -175,7 +175,30 @@ app.get('/connect/:pharmacyId', async (req, res) => {
   res.json({ status: 'WAITING', message: 'في انتظار الكود...' });
 });
 
-// مسار إرسال الاستعلام للصيدليات القريبة
+// مسار حذف جلسة الصيدلية وإعادة التصفير
+app.post('/disconnect/:pharmacyId', async (req, res) => {
+  try {
+    const { pharmacyId } = req.params;
+    
+    if (sessions[pharmacyId]) {
+      if (sessions[pharmacyId].sock) {
+        try { await sessions[pharmacyId].sock.logout(); } catch(e){}
+      }
+      delete sessions[pharmacyId];
+    }
+
+    try {
+      await db.collection('whatsapp_sessions').doc(pharmacyId).delete();
+    } catch (e) {}
+    
+    console.log(`🗑️ تم حذف جلسة الصيدلية: ${pharmacyId}`);
+    res.json({ success: true, message: "تم حذف الجلسة بنجاح" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// مسار إرسال الاستعلام للصيدليات
 app.post('/send', async (req, res) => {
   try {
     const { medicine, userPhone, askId } = req.body;
