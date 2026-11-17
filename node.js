@@ -1,6 +1,7 @@
 const express = require('express');
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
+const qrcode = require('qrcode-terminal'); // مكتبة طباعة الـ QR Code
 const firebase = require("firebase/compat/app");
 require("firebase/compat/firestore");
 
@@ -43,23 +44,30 @@ async function startWhatsApp() {
   
   sock = makeWASocket({
     auth: state,
-    printQRInTerminal: true,
     logger: pino({ level: 'silent' })
   });
 
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
+    
     if (qr) {
       latestQR = qr;
-      console.log("📌 تم توليد QR Code جديد للواتساب في الـ Logs.");
+      console.p("📌 تم توليد QR Code جديد. يرجى مسحه:");
+      // طباعة الـ QR Code مباشرة بشكل مرئي في الـ Logs
+      qrcode.generate(qr, { small: true });
     }
+
     if (connection === 'open') {
       latestQR = "CONNECTED";
       console.log("✅ تم الاتصال بالواتساب بنجاح!");
     }
+
     if (connection === 'close') {
       const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      if (shouldReconnect) startWhatsApp();
+      if (shouldReconnect) {
+        console.log("🔄 إعادة محاولة الاتصال...");
+        startWhatsApp();
+      }
     }
   });
 
@@ -67,7 +75,7 @@ async function startWhatsApp() {
 }
 
 app.get('/', (req, res) => {
-  res.send(`<h2>بوت واتساب دواي السودان شغال بنجاح ✅</h2><p>الحالة: ${latestQR === "CONNECTED" ? "متصل" : "في انتظار مسح الـ QR من الـ Logs"}</p>`);
+  res.send(`<h2>دواي - سيرفر الواتساب شغال ✅</h2><p>الحالة: ${latestQR === "CONNECTED" ? "متصل بنجاح" : "في انتظار مسح الـ QR من الـ Logs في Render"}</p>`);
 });
 
 // دالة حساب المسافة Haversine
@@ -105,7 +113,15 @@ app.post('/send', async (req, res) => {
       }
 
       if (!shouldSend) continue;
-      console.log(`📤 استعلام للصيدلية (${p.name || p.phone}): ${medicine}`);
+
+      const whatsappMessage = `💊 استعلام جديد عن دواء:\n- الدواء: ${medicine}\n- طالب الدواء: ${userPhone}\n- معرف الطلب: ${askId}\n- المسافة: ${distanceKm !== null ? distanceKm.toFixed(1) + ' كم' : 'غير محددة'}\n\nيرجى الرد بـ (متوفر) أو (غير متوفر).`;
+      
+      // إرسال الرسالة عبر البوت المتصل
+      if (sock && latestQR === "CONNECTED") {
+        await sock.sendMessage(p.phone + "@s.whatsapp.net", { text: whatsappMessage });
+      }
+
+      console.log(`📤 توجيه الاستعلام للصيدلية (${p.name || p.phone})`);
       sentCount++;
     }
 
@@ -115,7 +131,7 @@ app.post('/send', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 السيرفر يعمل على المنفذ ${PORT}`);
   startWhatsApp();
