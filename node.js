@@ -1,7 +1,7 @@
 const express = require('express');
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
-const qrcode = require('qrcode-terminal'); // مكتبة طباعة الـ QR Code
+const qrcode = require('qrcode'); // مكتبة توليد الـ QR بشكل نظيف
 const firebase = require("firebase/compat/app");
 require("firebase/compat/firestore");
 
@@ -52,9 +52,11 @@ async function startWhatsApp() {
     
     if (qr) {
       latestQR = qr;
-      console.log("📌 تم توليد QR Code جديد. يرجى مسحه:");
-      // طباعة الـ QR Code مباشرة بشكل مرئي في الـ Logs
-      qrcode.generate(qr, { small: true });
+      console.log("📌 تم توليد QR Code جديد:");
+      // طباعة الـ QR بشكل نصي صغير ومضبوط جداً في اللوغات
+      qrcode.toString(qr, { type: 'terminal', small: true }, (err, url) => {
+        if (!err) console.log(url);
+      });
     }
 
     if (connection === 'open') {
@@ -75,7 +77,7 @@ async function startWhatsApp() {
 }
 
 app.get('/', (req, res) => {
-  res.send(`<h2>دواي - سيرفر الواتساب شغال ✅</h2><p>الحالة: ${latestQR === "CONNECTED" ? "متصل بنجاح" : "في انتظار مسح الـ QR من الـ Logs في Render"}</p>`);
+  res.send(`<h2>دواي - سيرفر الواتساب شغال ✅</h2><p>الحالة: ${latestQR === "CONNECTED" ? "متصل بنجاح" : "في انتظار مسح الـ QR"}</p>`);
 });
 
 // دالة حساب المسافة Haversine
@@ -116,7 +118,6 @@ app.post('/send', async (req, res) => {
 
       const whatsappMessage = `💊 استعلام جديد عن دواء:\n- الدواء: ${medicine}\n- طالب الدواء: ${userPhone}\n- معرف الطلب: ${askId}\n- المسافة: ${distanceKm !== null ? distanceKm.toFixed(1) + ' كم' : 'غير محددة'}\n\nيرجى الرد بـ (متوفر) أو (غير متوفر).`;
       
-      // إرسال الرسالة عبر البوت المتصل
       if (sock && latestQR === "CONNECTED") {
         await sock.sendMessage(p.phone + "@s.whatsapp.net", { text: whatsappMessage });
       }
