@@ -2,13 +2,15 @@ const express = require('express');
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const qrcode = require('qrcode');
+const fs = require('fs');
+const path = require('path');
 const firebase = require("firebase/compat/app");
 require("firebase/compat/firestore");
 
 const app = express();
 app.use(express.json());
 
-// السماح بالاتصال من موقعك في Netlify
+// السماح لموقع Netlify بالاتصال بالسيرفر
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -36,85 +38,126 @@ try {
   console.error("🔥 Firebase Init Failed:", e);
 }
 
-let latestQR = "";
-let sock = null;
+// مخزن الجلسات النشطة في الذاكرة لكل الصيدليات
+const sessions = {}; // { pharmacyId: { sock, qr, status } }
 
-async function startWhatsApp() {
-  const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
-  
-  sock = makeWASocket({
+// التأكد من وجود مجلد حفظ الجلسات
+const SESSIONS_DIR = path.join(__dirname, 'sessions');
+if (!fs.existsSync(SESSIONS_DIR)) {
+  fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+}
+
+// دالة تشغيل جلسة واتساب مستقلة لكل صيدلية
+async function startPharmacySession(pharmacyId) {
+  const sessionPath = path.join(SESSIONS_DIR, `session_${pharmacyId}`);
+  const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+
+  sessions[pharmacyId] = { sock: null, qr: null, status: 'CONNECTING' };
+
+  const sock = makeWASocket({
     auth: state,
     logger: pino({ level: 'silent' })
   });
 
+  sessions[pharmacyId].sock = sock;
+
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
-    
+
     if (qr) {
-      latestQR = qr;
-      console.log("📌 تم توليد QR Code جديد وجاهز في الرابط /qr");
+      sessions[pharmacyId].qr = qr;
+      sessions[pharmacyId].status = 'QR_READY';
+      console.log(`📌 تم توليد QR جديد للصيدلية: ${pharmacyId}`);
     }
 
     if (connection === 'open') {
-      latestQR = "CONNECTED";
-      console.log("✅ تم الاتصال بالواتساب بنجاح!");
+      sessions[pharmacyId].qr = null;
+      sessions[pharmacyId].status = 'CONNECTED';
+      console.log(`✅ الصيدلية (${pharmacyId}) اتصلت بالواتساب بنجاح!`);
     }
 
     if (connection === 'close') {
-      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+      
       if (shouldReconnect) {
-        console.log("🔄 إعادة محاولة الاتصال...");
-        startWhatsApp();
+        console.log(`🔄 إعادة اتصال الصيدلية (${pharmacyId})...`);
+        startPharmacySession(pharmacyId);
+      } else {
+        console.log(`❌ تم تسجيل خروج الصيدلية (${pharmacyId})`);
+        sessions[pharmacyId].status = 'LOGGED_OUT';
+        fs.rmSync(sessionPath, { recursive: true, force: true });
       }
     }
   });
 
   sock.ev.on('creds.update', saveCreds);
+
+  // الاستماع لردود الصيدلي على استعلامات الأدوية
+  sock.ev.on('messages.upsert', async ({ messages }) => {
+    const msg = messages[0];
+    if (!msg.message || msg.key.fromMe) return;
+
+    const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+    const sender = msg.key.remoteJid;
+
+    if (text.includes("متوفر")) {
+      console.log(`💊 رد من الصيدلية (${pharmacyId}): الدواء متوفر!`);
+      // هنا يمكنك تحديث حالة الطلب في Firebase مباشرة ليظهر للعميل
+    }
+  });
 }
 
-// الصفحة الرئيسية تعرض الـ QR مباشرة كصورة
-app.get('/', async (req, res) => {
-  if (latestQR === "CONNECTED") {
-    return res.send(`<div style="text-align:center; font-family:sans-serif; margin-top:50px;">
-      <h2 style="color:green;">✅ بوت دواي متصل بالواتساب بنجاح!</h2>
-    </div>`);
+// إعادة تشغيل الجلسات المحفوظة مسبقاً عند إقلاع السيرفر
+function restoreAllSessions() {
+  if (!fs.existsSync(SESSIONS_DIR)) return;
+  const folders = fs.readdirSync(SESSIONS_DIR);
+  for (const folder of folders) {
+    if (folder.startsWith('session_')) {
+      const pharmacyId = folder.replace('session_', '');
+      console.log(`♻️ استعادة جلسة الصيدلية: ${pharmacyId}`);
+      startPharmacySession(pharmacyId);
+    }
   }
-  
-  if (!latestQR) {
-    return res.send(`<div style="text-align:center; font-family:sans-serif; margin-top:50px;">
-      <h3>⏳ جاري توليد الـ QR Code... اعمل تحديث (Refresh) للصفحة بعد ثواني</h3>
-      <script>setTimeout(() => location.reload(), 3000);</script>
-    </div>`);
-  }
+}
 
-  try {
-    const qrImage = await qrcode.toDataURL(latestQR);
-    res.send(`
-      <div style="text-align:center; font-family:sans-serif; margin-top:30px;">
-        <h2>امسح الكود لربط واتساب دواي 📱</h2>
-        <img src="${qrImage}" style="width:300px; height:300px; border:2px solid #ccc; border-radius:10px;"/>
-        <p style="color:#666;">يتم تحديث الصفحة تلقائياً كل 15 ثانية</p>
-        <script>setTimeout(() => location.reload(), 15000);</script>
-      </div>
-    `);
-  } catch (err) {
-    res.status(500).send("خطأ في توليد الصورة");
-  }
+// الصفحة الرئيسية للسيرفر
+app.get('/', (req, res) => {
+  const activeCount = Object.keys(sessions).filter(id => sessions[id].status === 'CONNECTED').length;
+  res.send(`
+    <div style="font-family:sans-serif; text-align:center; margin-top:40px;">
+      <h2>سيرفر بوت دواي (Multi-Session) يعمل بنجاح 🚀</h2>
+      <p>عدد الصيدليات المتصلة حالياً: <strong>${activeCount}</strong></p>
+    </div>
+  `);
 });
 
-// مسار API مخصص لموقعك في Netlify لجلب الصورة والربط
-app.get('/qr-data', async (req, res) => {
-  if (latestQR === "CONNECTED") {
-    return res.json({ status: "CONNECTED" });
+// مسار ربط صيدلية جديدة (يُستدعى من موقع Netlify)
+app.get('/connect/:pharmacyId', async (req, res) => {
+  const { pharmacyId } = req.params;
+  if (!pharmacyId) return res.status(400).json({ error: "معرف الصيدلية مطلوب" });
+
+  // إذا لم تكن هناك جلسة نشطة لهذه الصيدلية، ابدأ واحدة جديدة
+  if (!sessions[pharmacyId] || sessions[pharmacyId].status === 'LOGGED_OUT') {
+    await startPharmacySession(pharmacyId);
+    return res.json({ status: 'INITIALIZING', message: 'جاري تجهيز الـ QR Code...' });
   }
-  if (!latestQR) {
-    return res.json({ status: "WAITING" });
+
+  const currentSession = sessions[pharmacyId];
+
+  if (currentSession.status === 'CONNECTED') {
+    return res.json({ status: 'CONNECTED', message: 'هذه الصيدلية مرتبطة بالواتساب بالفعل ✅' });
   }
-  const qrImage = await qrcode.toDataURL(latestQR);
-  res.json({ status: "QR_READY", image: qrImage });
+
+  if (currentSession.status === 'QR_READY' && currentSession.qr) {
+    const qrImage = await qrcode.toDataURL(currentSession.qr);
+    return res.json({ status: 'QR_READY', image: qrImage });
+  }
+
+  res.json({ status: 'WAITING', message: 'في انتظار توليد الكود...' });
 });
 
-// دالة حساب المسافة
+// حساب المسافة الجغرافية
 function deg2rad(deg) { return deg * (Math.PI / 180); }
 function getDistanceInKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -124,6 +167,7 @@ function getDistanceInKm(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+// إرسال استعلام الدواء للصيدليات القريبة عبر جلساتها الخاصة
 app.post('/send', async (req, res) => {
   try {
     const { medicine, userPhone, askId, lat, lng, range } = req.body;
@@ -136,6 +180,7 @@ app.post('/send', async (req, res) => {
 
     for (const doc of phSnap.docs) {
       const p = doc.data();
+      const pharmacyId = p.phone || doc.id; // استخدام رقم الصيدلية أو معرفها كـ ID للجلسة
       if (!p.phone) continue;
 
       let shouldSend = true;
@@ -150,17 +195,20 @@ app.post('/send', async (req, res) => {
 
       if (!shouldSend) continue;
 
-      const whatsappMessage = `💊 استعلام جديد عن دواء:\n- الدواء: ${medicine}\n- طالب الدواء: ${userPhone}\n- معرف الطلب: ${askId}\n- المسافة: ${distanceKm !== null ? distanceKm.toFixed(1) + ' كم' : 'غير محددة'}\n\nيرجى الرد بـ (متوفر) أو (غير متوفر).`;
-      
-      if (sock && latestQR === "CONNECTED") {
-        await sock.sendMessage(p.phone + "@s.whatsapp.net", { text: whatsappMessage });
-      }
+      const whatsappMessage = `💊 *استعلام جديد عبر دواي*\n- الدواء المطلوب: *${medicine}*\n- رقم الطالب: ${userPhone}\n- رقم الطلب: ${askId}\n- المسافة: ${distanceKm !== null ? distanceKm.toFixed(1) + ' كم' : 'غير محددة'}\n\nللرد بتوفر الدواء، اكتب كلمة: *متوفر*`;
 
-      console.log(`📤 توجيه الاستعلام للصيدلية (${p.name || p.phone})`);
-      sentCount++;
+      // استخدام جلسة الصيدلية نفسها لإرسال التنبيه لرقمها
+      const pharmacySession = sessions[pharmacyId];
+      if (pharmacySession && pharmacySession.status === 'CONNECTED' && pharmacySession.sock) {
+        await pharmacySession.sock.sendMessage(p.phone + "@s.whatsapp.net", { text: whatsappMessage });
+        console.log(`📤 تم الإرسال عبر جلسة الصيدلية: ${p.name || pharmacyId}`);
+        sentCount++;
+      } else {
+        console.log(`⚠️ الصيدلية (${p.name || pharmacyId}) غير متصلة بالبوت حالياً`);
+      }
     }
 
-    res.json({ success: true, message: `تم إرسال السؤال إلى ${sentCount} صيدلية` });
+    res.json({ success: true, message: `تم إرسال الاستعلام إلى ${sentCount} صيدلية متصلة` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -169,5 +217,5 @@ app.post('/send', async (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 السيرفر يعمل على المنفذ ${PORT}`);
-  startWhatsApp();
+  restoreAllSessions();
 });
