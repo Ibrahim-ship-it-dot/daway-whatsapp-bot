@@ -1,14 +1,14 @@
 const express = require('express');
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
-const qrcode = require('qrcode'); // مكتبة توليد الـ QR بشكل نظيف
+const qrcode = require('qrcode');
 const firebase = require("firebase/compat/app");
 require("firebase/compat/firestore");
 
 const app = express();
 app.use(express.json());
 
-// CORS Headers
+// السماح بالاتصال من موقعك في Netlify
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -17,7 +17,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Firebase Config
+// إعدادات Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDlEBzVFhJzFkDI4mWnTSEQbUGOYBoVvbI",
   authDomain: "group-2f790.firebaseapp.com",
@@ -52,11 +52,7 @@ async function startWhatsApp() {
     
     if (qr) {
       latestQR = qr;
-      console.log("📌 تم توليد QR Code جديد:");
-      // طباعة الـ QR بشكل نصي صغير ومضبوط جداً في اللوغات
-      qrcode.toString(qr, { type: 'terminal', small: true }, (err, url) => {
-        if (!err) console.log(url);
-      });
+      console.log("📌 تم توليد QR Code جديد وجاهز في الرابط /qr");
     }
 
     if (connection === 'open') {
@@ -76,11 +72,49 @@ async function startWhatsApp() {
   sock.ev.on('creds.update', saveCreds);
 }
 
-app.get('/', (req, res) => {
-  res.send(`<h2>دواي - سيرفر الواتساب شغال ✅</h2><p>الحالة: ${latestQR === "CONNECTED" ? "متصل بنجاح" : "في انتظار مسح الـ QR"}</p>`);
+// الصفحة الرئيسية تعرض الـ QR مباشرة كصورة
+app.get('/', async (req, res) => {
+  if (latestQR === "CONNECTED") {
+    return res.send(`<div style="text-align:center; font-family:sans-serif; margin-top:50px;">
+      <h2 style="color:green;">✅ بوت دواي متصل بالواتساب بنجاح!</h2>
+    </div>`);
+  }
+  
+  if (!latestQR) {
+    return res.send(`<div style="text-align:center; font-family:sans-serif; margin-top:50px;">
+      <h3>⏳ جاري توليد الـ QR Code... اعمل تحديث (Refresh) للصفحة بعد ثواني</h3>
+      <script>setTimeout(() => location.reload(), 3000);</script>
+    </div>`);
+  }
+
+  try {
+    const qrImage = await qrcode.toDataURL(latestQR);
+    res.send(`
+      <div style="text-align:center; font-family:sans-serif; margin-top:30px;">
+        <h2>امسح الكود لربط واتساب دواي 📱</h2>
+        <img src="${qrImage}" style="width:300px; height:300px; border:2px solid #ccc; border-radius:10px;"/>
+        <p style="color:#666;">يتم تحديث الصفحة تلقائياً كل 15 ثانية</p>
+        <script>setTimeout(() => location.reload(), 15000);</script>
+      </div>
+    `);
+  } catch (err) {
+    res.status(500).send("خطأ في توليد الصورة");
+  }
 });
 
-// دالة حساب المسافة Haversine
+// مسار API مخصص لموقعك في Netlify لجلب الصورة والربط
+app.get('/qr-data', async (req, res) => {
+  if (latestQR === "CONNECTED") {
+    return res.json({ status: "CONNECTED" });
+  }
+  if (!latestQR) {
+    return res.json({ status: "WAITING" });
+  }
+  const qrImage = await qrcode.toDataURL(latestQR);
+  res.json({ status: "QR_READY", image: qrImage });
+});
+
+// دالة حساب المسافة
 function deg2rad(deg) { return deg * (Math.PI / 180); }
 function getDistanceInKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
