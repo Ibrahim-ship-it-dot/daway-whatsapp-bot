@@ -52,7 +52,7 @@ async function startWhatsApp() {
     
     if (qr) {
       latestQR = qr;
-      console.p("📌 تم توليد QR Code جديد. يرجى مسحه:");
+      console.log("📌 تم توليد QR Code جديد. يرجى مسحه:");
       // طباعة الـ QR Code مباشرة بشكل مرئي في الـ Logs
       qrcode.generate(qr, { small: true });
     }
