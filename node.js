@@ -40,15 +40,51 @@ try {
 
 const sessions = {}; // { pharmacyId: { sock, qr, status } }
 
-// مجلد تخزين جلسات الواتساب محلياً لكل صيدلية
 const SESSIONS_DIR = path.join(__dirname, 'sessions');
 if (!fs.existsSync(SESSIONS_DIR)) {
   fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 }
 
+// دالة لحفظ الـ creds في فايربيس لضمان عدم فقدانها عند ريستارت سيرفر Render
+async function saveCredsToFirestore(pharmacyId, sessionPath) {
+  try {
+    const credsPath = path.join(sessionPath, 'creds.json');
+    if (fs.existsSync(credsPath)) {
+      const credsData = fs.readFileSync(credsPath, 'utf8');
+      await db.collection("whatsapp_sessions").doc(pharmacyId).set({
+        creds: credsData,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    }
+  } catch (err) {
+    console.error(`🔥 خطأ في رفع الجلسة لـ فايربيس للصيدلية ${pharmacyId}:`, err);
+  }
+}
+
+// دالة لاسترجاع الـ creds من فايربيس قبل بدء الجلسة
+async function restoreCredsFromFirestore(pharmacyId, sessionPath) {
+  try {
+    const doc = await db.collection("whatsapp_sessions").doc(pharmacyId).get();
+    if (doc.exists && doc.data().creds) {
+      if (!fs.existsSync(sessionPath)) {
+        fs.mkdirSync(sessionPath, { recursive: true });
+      }
+      const credsPath = path.join(sessionPath, 'creds.json');
+      fs.writeFileSync(credsPath, doc.data().creds, 'utf8');
+      console.log(`🔄 تم استرجاع جلسة الصيدلية (${pharmacyId}) من فايربيس بنجاح.`);
+    }
+  } catch (err) {
+    console.error(`🔥 خطأ في استرجاع الجلسة من فايربيس للصيدلية ${pharmacyId}:`, err);
+  }
+}
+
 // دالة تشغيل جلسة واتساب مستقلة وصاروخية لكل صيدلية
 async function startPharmacySession(pharmacyId) {
   const sessionPath = path.join(SESSIONS_DIR, `session_${pharmacyId}`);
+  
+  // استعادة الاعتمادات من فايربيس أولاً قبل تهيئة الحالة
+  await restoreCredsFromFirestore(pharmacyId, sessionPath);
+
   const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
 
   sessions[pharmacyId] = { sock: null, qr: null, status: 'CONNECTING' };
@@ -75,6 +111,8 @@ async function startPharmacySession(pharmacyId) {
       sessions[pharmacyId].qr = null;
       sessions[pharmacyId].status = 'CONNECTED';
       console.log(`✅ الصيدلية (${pharmacyId}) متصلة بالواتساب بنجاح!`);
+      // حفظ الاعتمادات في فايربيس فور الاتصال الناجح
+      await saveCredsToFirestore(pharmacyId, sessionPath);
     }
 
     if (connection === 'close') {
@@ -87,12 +125,18 @@ async function startPharmacySession(pharmacyId) {
       } else {
         console.log(`❌ تسجيل خروج الصيدلية (${pharmacyId})`);
         sessions[pharmacyId].status = 'LOGGED_OUT';
-        try { fs.rmSync(sessionPath, { recursive: true, force: true }); } catch (e) {}
+        try { 
+          fs.rmSync(sessionPath, { recursive: true, force: true }); 
+          await db.collection("whatsapp_sessions").doc(pharmacyId).delete();
+        } catch (e) {}
       }
     }
   });
 
-  sock.ev.on('creds.update', saveCreds);
+  sock.ev.on('creds.update', async () => {
+    await saveCreds();
+    await saveCredsToFirestore(pharmacyId, sessionPath);
+  });
 
   // الاستماع لرد الصيدلي بكلمة متوفر وتحديث الطلب في Firebase
   sock.ev.on('messages.upsert', async ({ messages }) => {
@@ -126,18 +170,25 @@ async function startPharmacySession(pharmacyId) {
   });
 }
 
-function restoreLocalSessions() {
-  if (!fs.existsSync(SESSIONS_DIR)) return;
-  const folders = fs.readdirSync(SESSIONS_DIR);
-  for (const folder of folders) {
-    if (folder.startsWith('session_')) {
-      const pharmacyId = folder.replace('session_', '');
-      startPharmacySession(pharmacyId);
+// استعادة الجلسات تلقائياً من فايربيس عند تشغيل السيرفر
+async function restoreAllSessionsFromFirebase() {
+  try {
+    const snapshot = await db.collection("whatsapp_sessions").get();
+    if (snapshot.empty) {
+      console.log("ℹ️ لا توجد جلسات محفوظة مسبقاً في فايربيس.");
+      return;
     }
+    snapshot.forEach(doc => {
+      const pharmacyId = doc.id;
+      console.log(`🔄 جارٍ استعادة جلسة الصيدلية تلقائياً: ${pharmacyId}`);
+      startPharmacySession(pharmacyId);
+    });
+  } catch (err) {
+    console.error("🔥 خطأ في استعادة الجلسات من فايربيس:", err);
   }
 }
 
-// مسار الصفحة الرئيسية (لوحة التحكم البسيطة لربط الصيدليات)
+// مسار الصفحة الرئيسية
 app.get('/', (req, res) => {
   res.send(`<h2>سيرفر بوت دواي (Multi-Session) يعمل بنجاح 🚀</h2>`);
 });
@@ -170,6 +221,7 @@ app.post('/disconnect/:pharmacyId', async (req, res) => {
       delete sessions[pharmacyId];
     }
     if (fs.existsSync(sessionPath)) fs.rmSync(sessionPath, { recursive: true, force: true });
+    await db.collection("whatsapp_sessions").doc(pharmacyId).delete();
     res.json({ success: true, message: "تم حذف الجلسة بنجاح" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -186,14 +238,14 @@ function getDistanceInKm(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// مسار استقبال الاستعلام من واجهة Netlify وإرساله للصيدليات القريبة ضمن النطاق
+// مسار استقبال الاستعلام وإرساله للصيدليات
 app.post('/send', async (req, res) => {
   try {
     const { medicine, userPhone, askId, lat, lng, range } = req.body;
     if (!medicine || !userPhone || !askId) return res.status(400).json({ error: "بيانات غير مكتملة" });
 
     let isLocationAvailable = (lat && lng);
-    const searchRange = parseFloat(range) || 4; // النطاق الافتراضي 4 كم مطابقة لواجهتك
+    const searchRange = parseFloat(range) || 4;
     const phSnap = await db.collection("pharmacies").get();
     let sentCount = 0;
 
@@ -231,7 +283,8 @@ app.post('/send', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 السيرفر يعمل على المنفذ ${PORT}`);
-  restoreLocalSessions();
+  // استعادة الجلسات تلقائياً من فايربيس عند الإقلاع
+  await restoreAllSessionsFromFirebase();
 });
