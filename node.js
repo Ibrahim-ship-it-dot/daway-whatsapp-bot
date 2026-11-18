@@ -136,14 +136,14 @@ async function startPharmacySession(pharmacyId) {
     await saveCredsToFirestore(pharmacyId, sessionPath);
   });
 
-  // الاستماع للرد وتطبيق الكلمات الدلالية مع فلترة رسائل القنوات والمجموعات
+  // الاستماع للرد وتطبيق الشرط الحصري بكلمة "متوفر" فقط
   sock.ev.on('messages.upsert', async ({ messages }) => {
     const msg = messages[0];
     if (!msg.message || msg.key.fromMe) return;
     
     const sender = msg.key.remoteJid;
 
-    // 🛑 تجاهل تام لأي رسائل واردة من قنوات الواتساب أو المجموعات العامة
+    // 🛑 تجاهل تام لأي رسائل واردة من قنوات الواتساب أو والمجموعات العامة
     if (sender.includes('@newsletter') || sender.endsWith('@g.us')) {
       return; 
     }
@@ -152,16 +152,9 @@ async function startPharmacySession(pharmacyId) {
 
     console.log(`📥 رسالة واردة من الصيدلية (${pharmacyId}): "${text}"`);
 
-    // قائمة الكلمات الدلالية المعتمدة للتوفر
-    const validKeywords = ["1", "في", "اي", "عندنا", "ايوه", "تم", "متوفر", "موجود", "نعم"];
-    
-    let responseStatus = 0; // القيمة الافتراضية صفر
-    if (validKeywords.includes(text)) {
-      responseStatus = 1; // لو رد بأي كلمة من القائمة يأخذ 1
-    }
-
-    if (responseStatus === 1) {
-      console.log(`💊 الصيدلية (${pharmacyId}) ردت بـ (${text}) وتم اعتماد القيمة (1 - متوفر)!`);
+    // الشرط الحصري: أن تكون الرسالة هي كلمة "متوفر" فقط لا غير
+    if (text === "متوفر") {
+      console.log(`💊 الصيدلية (${pharmacyId}) ردت بـ ("متوفر") وتم الحفظ في Firebase!`);
       try {
         const requestsRef = db.collection("medicine_requests");
         const querySnapshot = await requestsRef.where("status", "==", "pending").get();
@@ -173,11 +166,11 @@ async function startPharmacySession(pharmacyId) {
             await doc.ref.update({
               status: "available",
               availablePharmacyPhone: pharmacyId,
-              responseCode: 1, // تخزين القيمة 1 في فايربيس
+              responseCode: "متوفر", // حفظ الكلمة "متوفر" حصرياً في الحقل
               responseMessage: text,
               updatedAt: new Date().toISOString()
             });
-            console.log(`✅ تم تحديث الطلب (${doc.id}) في Firebase بالرمز (1) بنجاح`);
+            console.log(`✅ تم تحديث الطلب (${doc.id}) في Firebase بالقيمة ("متوفر") بنجاح`);
             await sock.sendMessage(sender, { text: "✅ تم تسجيل ردك (متوفر) بنجاح. شكراً لك!" });
             break;
           }
@@ -186,7 +179,7 @@ async function startPharmacySession(pharmacyId) {
         console.error("🔥 خطأ في تحديث الطلب:", err);
       }
     } else {
-      console.log(`ℹ️ الرسالة الواردة (${text}) لا تطابق كلمات التوفر المعتمدة. تم اعتبارها (0).`);
+      console.log(`ℹ️ الرسالة الواردة (${text}) لا تساوى كلمة "متوفر" حصرياً. تم تجاهلها.`);
     }
   });
 }
@@ -257,7 +250,7 @@ function getDistanceInKm(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// مسار استقبال الاستعلام وإرساله للصيدليات مع توضيح الكلمات الدلالية في نص الرسالة
+// مسار استقبال الاستعلام وإرساله للصيدليات مع تنبيه الصيدلي بالرد بكلمة "متوفر" حصرياً
 app.post('/send', async (req, res) => {
   try {
     const { medicine, userPhone, askId, lat, lng, range } = req.body;
@@ -285,7 +278,7 @@ app.post('/send', async (req, res) => {
 
       if (!shouldSend) continue;
 
-      const whatsappMessage = `💊 *استعلام جديد عبر دواي*\n- الدواء المطلوب: *${medicine}*\n- رقم الطالب: ${userPhone}\n- رقم الطلب: ${askId}\n- المسافة: ${distanceKm !== null ? distanceKm.toFixed(1) + ' كم' : 'غير محددة'}\n\nللرد بتوفر الدواء، اكتب أي كلمة مثل: *تم، متوفر، موجود، عندنا، اي، في* أو ارسل الرقم *1*.`;
+      const whatsappMessage = `💊 *استعلام جديد عبر دواي*\n- الدواء المطلوب: *${medicine}*\n- رقم الطالب: ${userPhone}\n- رقم الطلب: ${askId}\n- المسافة: ${distanceKm !== null ? distanceKm.toFixed(1) + ' كم' : 'غير محددة'}\n\nللرد بتوفر الدواء، اكتب كلمة: *متوفر* فقط.`;
 
       const pharmacySession = sessions[pharmacyId];
       if (pharmacySession && pharmacySession.status === 'CONNECTED' && pharmacySession.sock) {
@@ -295,13 +288,13 @@ app.post('/send', async (req, res) => {
       }
     }
 
-    // حفظ الاستعلام في medicine_requests مع تعيين رد افتراضي (0)
+    // حفظ الاستعلام في medicine_requests مع تعيين القيمة الابتدائية بانتظار الرد
     await db.collection("medicine_requests").doc(askId).set({
       medicine,
       userPhone,
       askId,
       status: "pending",
-      responseCode: 0, // القيمة تبدأ بصفر
+      responseCode: "pending", // تبدأ بانتظار الرد وتتحول إلى "متوفر" عند الرد الصحيح
       lat: lat || null,
       lng: lng || null,
       createdAt: new Date().toISOString()
