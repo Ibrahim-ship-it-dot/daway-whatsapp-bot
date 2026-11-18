@@ -82,7 +82,6 @@ async function restoreCredsFromFirestore(pharmacyId, sessionPath) {
 async function startPharmacySession(pharmacyId) {
   const sessionPath = path.join(SESSIONS_DIR, `session_${pharmacyId}`);
   
-  // استعادة الاعتمادات من فايربيس أولاً قبل تهيئة الحالة
   await restoreCredsFromFirestore(pharmacyId, sessionPath);
 
   const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
@@ -111,7 +110,6 @@ async function startPharmacySession(pharmacyId) {
       sessions[pharmacyId].qr = null;
       sessions[pharmacyId].status = 'CONNECTED';
       console.log(`✅ الصيدلية (${pharmacyId}) متصلة بالواتساب بنجاح!`);
-      // حفظ الاعتمادات في فايربيس فور الاتصال الناجح
       await saveCredsToFirestore(pharmacyId, sessionPath);
     }
 
@@ -138,43 +136,50 @@ async function startPharmacySession(pharmacyId) {
     await saveCredsToFirestore(pharmacyId, sessionPath);
   });
 
-  // الاستماع لرد الصيدلي بكلمة متوفر وتحديث الطلب في Firebase بدقة تامة
+  // الاستماع للرد وتطبيق الكلمات الدلالية الشاملة للتوفر (تسجيل القيمة 1)
   sock.ev.on('messages.upsert', async ({ messages }) => {
     const msg = messages[0];
     if (!msg.message || msg.key.fromMe) return;
-    const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+    const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").trim().toLowerCase();
     const sender = msg.key.remoteJid;
 
     console.log(`📥 رسالة واردة من الصيدلية (${pharmacyId}): "${text}"`);
 
-    if (text.trim().toLowerCase().includes("متوفر") || text.trim().toLowerCase().includes("موجود")) {
-      console.log(`💊 الصيدلية (${pharmacyId}) أكدت توفر الدواء! جاري البحث عن أحدث طلب في Firebase...`);
+    // قائمة الكلمات الدلالية المعتمدة للتوفر
+    const validKeywords = ["1", "في", "اي", "عندنا", "ايوه", "تم", "متوفر", "موجود", "نعم"];
+    
+    let responseStatus = 0; // القيمة الافتراضية صفر
+    if (validKeywords.includes(text)) {
+      responseStatus = 1; // لو رد بأي كلمة من القائمة يأخذ 1
+    }
+
+    if (responseStatus === 1) {
+      console.log(`💊 الصيدلية (${pharmacyId}) ردت بـ (${text}) وتم اعتماد القيمة (1 - متوفر)!`);
       try {
         const requestsRef = db.collection("medicine_requests");
-        
-        // جلب أحدث طلب أُرسل لهذه الصيدلية أو أي طلب نشط
-        const querySnapshot = await requestsRef
-          .where("status", "==", "pending")
-          .get();
+        const querySnapshot = await requestsRef.where("status", "==", "pending").get();
 
         if (querySnapshot.empty) {
-          console.log("⚠️ لا توجد طلبات بحالة pending حالياً في قاعدة البيانات.");
+          console.log("⚠️ لا توجد طلبات معلقة (pending) حالياً.");
         } else {
-          // تحديث أول طلب معلق وإثبات أن هذه الصيدلية هي التي ردت
           for (const doc of querySnapshot.docs) {
             await doc.ref.update({
               status: "available",
               availablePharmacyPhone: pharmacyId,
+              responseCode: 1, // تخزين القيمة 1 في فايربيس
+              responseMessage: text,
               updatedAt: new Date().toISOString()
             });
-            console.log(`✅ تم تحديث حالة الطلب (${doc.id}) في Firebase بواسطة الصيدلية (${pharmacyId}) بنجاح`);
-            await sock.sendMessage(sender, { text: "✅ تم تسجيل ردك بنجاح وإبلاغ العميل في منصة دواي. شكراً لك!" });
+            console.log(`✅ تم تحديث الطلب (${doc.id}) في Firebase بالرمز (1) بنجاح`);
+            await sock.sendMessage(sender, { text: "✅ تم تسجيل ردك (متوفر) بنجاح. شكراً لك!" });
             break;
           }
         }
       } catch (err) {
         console.error("🔥 خطأ في تحديث الطلب:", err);
       }
+    } else {
+      console.log(`ℹ️ الرسالة الواردة (${text}) لا تطابق كلمات التوفر المعتمدة. تم اعتبارها (0).`);
     }
   });
 }
@@ -197,7 +202,6 @@ async function restoreAllSessionsFromFirebase() {
   }
 }
 
-// مسار الصفحة الرئيسية
 app.get('/', (req, res) => {
   res.send(`<h2>سيرفر بوت دواي (Multi-Session) يعمل بنجاح 🚀</h2>`);
 });
@@ -237,7 +241,6 @@ app.post('/disconnect/:pharmacyId', async (req, res) => {
   }
 });
 
-// دوال حساب المسافة الجغرافية (Haversine Formula)
 function deg2rad(deg) { return deg * (Math.PI / 180); }
 function getDistanceInKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -247,7 +250,7 @@ function getDistanceInKm(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// مسار استقبال الاستعلام وإرساله للصيدليات وحفظه في medicine_requests
+// مسار استقبال الاستعلام وإرساله للصيدليات مع توضيح الكلمات الدلالية في نص الرسالة
 app.post('/send', async (req, res) => {
   try {
     const { medicine, userPhone, askId, lat, lng, range } = req.body;
@@ -275,7 +278,7 @@ app.post('/send', async (req, res) => {
 
       if (!shouldSend) continue;
 
-      const whatsappMessage = `💊 *استعلام جديد عبر دواي*\n- الدواء المطلوب: *${medicine}*\n- رقم الطالب: ${userPhone}\n- رقم الطلب: ${askId}\n- المسافة: ${distanceKm !== null ? distanceKm.toFixed(1) + ' كم' : 'غير محددة'}\n\nللرد بتوفر الدواء، اكتب كلمة: *متوفر*`;
+      const whatsappMessage = `💊 *استعلام جديد عبر دواي*\n- الدواء المطلوب: *${medicine}*\n- رقم الطالب: ${userPhone}\n- رقم الطلب: ${askId}\n- المسافة: ${distanceKm !== null ? distanceKm.toFixed(1) + ' كم' : 'غير محددة'}\n\nللرد بتوفر الدواء، اكتب أي كلمة مثل: *تم، متوفر، موجود، عندنا، اي، في* أو ارسل الرقم *1*.`;
 
       const pharmacySession = sessions[pharmacyId];
       if (pharmacySession && pharmacySession.status === 'CONNECTED' && pharmacySession.sock) {
@@ -285,12 +288,13 @@ app.post('/send', async (req, res) => {
       }
     }
 
-    // حفظ الاستعلام في medicine_requests بحالة pending ليتسنى للصيدلي تحديثه عند الرد
+    // حفظ الاستعلام في medicine_requests مع تعيين رد افتراضي (0)
     await db.collection("medicine_requests").doc(askId).set({
       medicine,
       userPhone,
       askId,
       status: "pending",
+      responseCode: 0, // القيمة تبدأ بصفر
       lat: lat || null,
       lng: lng || null,
       createdAt: new Date().toISOString()
@@ -305,6 +309,5 @@ app.post('/send', async (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, async () => {
   console.log(`🚀 السيرفر يعمل على المنفذ ${PORT}`);
-  // استعادة الجلسات تلقائياً من فايربيس عند الإقلاع
   await restoreAllSessionsFromFirebase();
 });
