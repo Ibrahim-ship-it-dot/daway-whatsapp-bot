@@ -8,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*", // السماح بالاتصال من أي صفحة محلية أو خارجية
+        origin: "*",
         methods: ["GET", "POST"]
     }
 });
@@ -25,7 +25,8 @@ async function startBot() {
     sock = makeWASocket({
         auth: state,
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: true
+        printQRInTerminal: true,
+        browser: ['Daway Bot', 'Safari', '1.0.0']
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -37,28 +38,31 @@ async function startBot() {
             qrCodeData = qr;
             connectionStatus = 'qr_ready';
             io.emit('status', { status: 'qr_ready', qr });
+            console.log('📱 QR Code جديد جاهز للربط!');
         }
 
         if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
+            const statusCode = lastDisconnect?.error?.output?.statusCode;
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+            
             connectionStatus = 'disconnected';
             io.emit('status', { status: 'disconnected' });
+            console.log(`❌ انقطع الاتصال (السبب: ${statusCode || 'غير معروف'})`);
             
             if (shouldReconnect) {
-                console.log('🔄 جاري إعادة الاتصال...');
-                startBot();
+                console.log('🔄 جاري إعادة محاولة الاتصال تلقائياً...');
+                setTimeout(startBot, 3000);
             } else {
-                console.log('⚠️ تم تسجيل الخروج. يرجى حذف مجلد auth_info وإعادة التشغيل.');
+                console.log('⚠️ تم تسجيل الخروج نهائياً. يرجى مسح مجلد auth_info وإعادة ربط الباركود.');
             }
         } else if (connection === 'open') {
             connectionStatus = 'connected';
             qrCodeData = '';
-            console.log('✅ تم اتصال البوت بنجاح!');
+            console.log('✅ تم اتصال البوت بنجاح وجاهز للعمل!');
             io.emit('status', { status: 'connected' });
         }
     });
 
-    // استقبال الرسائل وإرسالها للواجهة المتصلة
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
         const msg = messages[0];
@@ -68,13 +72,12 @@ async function startBot() {
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
 
         if (text) {
-            console.log(`📩 رسالة من [${sender}]: ${text}`);
+            console.log(`📩 رسالة واردة من [${sender}]: ${text}`);
             io.emit('new_message', { sender, text, time: new Date().toLocaleTimeString() });
         }
     });
 }
 
-// API لإرسال رسالة
 app.post('/send-message', async (req, res) => {
     const { phone, message } = req.body;
     if (!sock || connectionStatus !== 'connected') {
@@ -90,13 +93,12 @@ app.post('/send-message', async (req, res) => {
     }
 });
 
-// مسار تجريبي للتأكد إن السيرفر شغال
 app.get('/', (req, res) => {
-    res.send('Daway WhatsApp Bot Server is running!');
+    res.send('Daway WhatsApp Bot Server is active!');
 });
 
 io.on('connection', (socket) => {
-    console.log('🔗 متصفح محلي اتصل بالـ Socket');
+    console.log('🔗 تم اتصال واجهة محلية بالـ Socket');
     socket.emit('status', { status: connectionStatus, qr: qrCodeData });
 });
 
