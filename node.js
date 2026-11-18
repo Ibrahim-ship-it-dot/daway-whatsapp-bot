@@ -61,7 +61,7 @@ async function saveCredsToFirestore(pharmacyId, sessionPath) {
   }
 }
 
-// دالة لاسترجاع الـ creds من فايربيس مع معالجة الأخطاء
+// دالة لاسترجاع الـ creds من فايربيس
 async function restoreCredsFromFirestore(pharmacyId, sessionPath) {
   try {
     const doc = await db.collection("whatsapp_sessions").doc(pharmacyId).get();
@@ -78,7 +78,7 @@ async function restoreCredsFromFirestore(pharmacyId, sessionPath) {
   }
 }
 
-// دالة تشغيل جلسة واتساب مستقلة
+// دالة تشغيل جلسة واتساب مستقلة وصاروخية لكل صيدلية
 async function startPharmacySession(pharmacyId) {
   const sessionPath = path.join(SESSIONS_DIR, `session_${pharmacyId}`);
   
@@ -94,10 +94,21 @@ async function startPharmacySession(pharmacyId) {
     browser: ["Chrome (Linux)", "Desktop", "3.0"],
     logger: pino({ level: 'silent' }),
     markOnlineOnConnect: true,
-    generateHighQualityLinkPreview: false
+    generateHighQualityLinkPreview: false,
+    // معالجة صامتة لتجنب انهيار الاتصال عند وجود رسائل سابقة بتشفير قديم
+    getMessage: async (key) => {
+      return { conversation: "" };
+    }
   });
 
   sessions[pharmacyId].sock = sock;
+
+  // التقاط الأخطاء لمنع الـ Crash
+  if (sock.ws) {
+    sock.ws.on('error', (err) => {
+      console.log('⚠️ تنبيه سوكت الواتساب:', err.message);
+    });
+  }
 
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
@@ -138,50 +149,54 @@ async function startPharmacySession(pharmacyId) {
     await saveCredsToFirestore(pharmacyId, sessionPath);
   });
 
-  // الاستماع للرد وتطبيق الشرط الحصري بكلمة "متوفر" فقط
+  // الاستماع للرد وتطبيق الشرط الحصري بكلمة "متوفر" فقط مع فلترة القنوات والمجموعات
   sock.ev.on('messages.upsert', async ({ messages }) => {
-    const msg = messages[0];
-    if (!msg.message || msg.key.fromMe) return;
-    
-    const sender = msg.key.remoteJid;
+    try {
+      const msg = messages[0];
+      if (!msg.message || msg.key.fromMe) return;
+      
+      const sender = msg.key.remoteJid;
 
-    // 🛑 تجاهل تام لأي رسائل واردة من قنوات الواتساب أو والمجموعات العامة
-    if (sender.includes('@newsletter') || sender.endsWith('@g.us')) {
-      return; 
-    }
-
-    const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").trim().toLowerCase();
-
-    console.log(`📥 رسالة واردة من الصيدلية (${pharmacyId}): "${text}"`);
-
-    // الشرط الحصري: أن تكون الرسالة هي كلمة "متوفر" فقط لا غير
-    if (text === "متوفر") {
-      console.log(`💊 الصيدلية (${pharmacyId}) ردت بـ ("متوفر") وتم الحفظ في Firebase!`);
-      try {
-        const requestsRef = db.collection("medicine_requests");
-        const querySnapshot = await requestsRef.where("status", "==", "pending").get();
-
-        if (querySnapshot.empty) {
-          console.log("⚠️ لا توجد طلبات معلقة (pending) حالياً.");
-        } else {
-          for (const doc of querySnapshot.docs) {
-            await doc.ref.update({
-              status: "available",
-              availablePharmacyPhone: pharmacyId,
-              responseCode: "متوفر",
-              responseMessage: text,
-              updatedAt: new Date().toISOString()
-            });
-            console.log(`✅ تم تحديث الطلب (${doc.id}) في Firebase بالقيمة ("متوفر") بنجاح`);
-            await sock.sendMessage(sender, { text: "✅ تم تسجيل ردك (متوفر) بنجاح. شكراً لك!" });
-            break;
-          }
-        }
-      } catch (err) {
-        console.error("🔥 خطأ في تحديث الطلب:", err);
+      // 🛑 تجاهل تام لأي رسائل واردة من قنوات الواتساب أو المجموعات العامة
+      if (sender.includes('@newsletter') || sender.endsWith('@g.us')) {
+        return; 
       }
-    } else {
-      console.log(`ℹ️ الرسالة الواردة (${text}) لا تساوى كلمة "متوفر" حصرياً. تم تجاهلها.`);
+
+      const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").trim().toLowerCase();
+
+      console.log(`📥 رسالة واردة من الصيدلية (${pharmacyId}): "${text}"`);
+
+      // الشرط الحصري: أن تكون الرسالة هي كلمة "متوفر" فقط لا غير
+      if (text === "متوفر") {
+        console.log(`💊 الصيدلية (${pharmacyId}) ردت بـ ("متوفر") وتم الحفظ في Firebase!`);
+        try {
+          const requestsRef = db.collection("medicine_requests");
+          const querySnapshot = await requestsRef.where("status", "==", "pending").get();
+
+          if (querySnapshot.empty) {
+            console.log("⚠️ لا توجد طلبات معلقة (pending) حالياً.");
+          } else {
+            for (const doc of querySnapshot.docs) {
+              await doc.ref.update({
+                status: "available",
+                availablePharmacyPhone: pharmacyId,
+                responseCode: "متوفر", // حفظ الكلمة "متوفر" حصرياً في الحقل
+                responseMessage: text,
+                updatedAt: new Date().toISOString()
+              });
+              console.log(`✅ تم تحديث الطلب (${doc.id}) في Firebase بالقيمة ("متوفر") بنجاح`);
+              await sock.sendMessage(sender, { text: "✅ تم تسجيل ردك (متوفر) بنجاح. شكراً لك!" });
+              break;
+            }
+          }
+        } catch (err) {
+          console.error("🔥 خطأ في تحديث الطلب:", err);
+        }
+      } else {
+        console.log(`ℹ️ الرسالة الواردة (${text}) لا تساوى كلمة "متوفر" حصرياً. تم تجاهلها.`);
+      }
+    } catch (err) {
+      console.error("⚠️ خطأ معالجة الرسالة الواردة (تم تجاوزه):", err.message);
     }
   });
 }
@@ -252,7 +267,7 @@ function getDistanceInKm(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// مسار استقبال الاستعلام وإرساله للصيدليات
+// مسار استقبال الاستعلام وإرساله للصيدليات مع تنبيه الصيدلي بالرد بكلمة "متوفر" حصرياً
 app.post('/send', async (req, res) => {
   try {
     const { medicine, userPhone, askId, lat, lng, range } = req.body;
@@ -290,12 +305,13 @@ app.post('/send', async (req, res) => {
       }
     }
 
+    // حفظ الاستعلام في medicine_requests مع تعيين القيمة الابتدائية بانتظار الرد
     await db.collection("medicine_requests").doc(askId).set({
       medicine,
       userPhone,
       askId,
       status: "pending",
-      responseCode: "pending",
+      responseCode: "pending", // تبدأ بانتظار الرد وتتحول إلى "متوفر" عند الرد الصحيح
       lat: lat || null,
       lng: lng || null,
       createdAt: new Date().toISOString()
