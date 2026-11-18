@@ -45,7 +45,7 @@ if (!fs.existsSync(SESSIONS_DIR)) {
   fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 }
 
-// دالة لحفظ الـ creds في فايربيس لضمان عدم فقدانها عند ريستارت سيرفر Render
+// دالة لحفظ الـ creds في فايربيس
 async function saveCredsToFirestore(pharmacyId, sessionPath) {
   try {
     const credsPath = path.join(sessionPath, 'creds.json');
@@ -61,7 +61,7 @@ async function saveCredsToFirestore(pharmacyId, sessionPath) {
   }
 }
 
-// دالة لاسترجاع الـ creds من فايربيس قبل بدء الجلسة
+// دالة لاسترجاع الـ creds من فايربيس مع معالجة الأخطاء
 async function restoreCredsFromFirestore(pharmacyId, sessionPath) {
   try {
     const doc = await db.collection("whatsapp_sessions").doc(pharmacyId).get();
@@ -78,7 +78,7 @@ async function restoreCredsFromFirestore(pharmacyId, sessionPath) {
   }
 }
 
-// دالة تشغيل جلسة واتساب مستقلة وصاروخية لكل صيدلية
+// دالة تشغيل جلسة واتساب مستقلة
 async function startPharmacySession(pharmacyId) {
   const sessionPath = path.join(SESSIONS_DIR, `session_${pharmacyId}`);
   
@@ -92,7 +92,9 @@ async function startPharmacySession(pharmacyId) {
     auth: state,
     printQRInTerminal: false,
     browser: ["Chrome (Linux)", "Desktop", "3.0"],
-    logger: pino({ level: 'silent' })
+    logger: pino({ level: 'silent' }),
+    markOnlineOnConnect: true,
+    generateHighQualityLinkPreview: false
   });
 
   sessions[pharmacyId].sock = sock;
@@ -166,7 +168,7 @@ async function startPharmacySession(pharmacyId) {
             await doc.ref.update({
               status: "available",
               availablePharmacyPhone: pharmacyId,
-              responseCode: "متوفر", // حفظ الكلمة "متوفر" حصرياً في الحقل
+              responseCode: "متوفر",
               responseMessage: text,
               updatedAt: new Date().toISOString()
             });
@@ -250,7 +252,7 @@ function getDistanceInKm(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// مسار استقبال الاستعلام وإرساله للصيدليات مع تنبيه الصيدلي بالرد بكلمة "متوفر" حصرياً
+// مسار استقبال الاستعلام وإرساله للصيدليات
 app.post('/send', async (req, res) => {
   try {
     const { medicine, userPhone, askId, lat, lng, range } = req.body;
@@ -288,13 +290,12 @@ app.post('/send', async (req, res) => {
       }
     }
 
-    // حفظ الاستعلام في medicine_requests مع تعيين القيمة الابتدائية بانتظار الرد
     await db.collection("medicine_requests").doc(askId).set({
       medicine,
       userPhone,
       askId,
       status: "pending",
-      responseCode: "pending", // تبدأ بانتظار الرد وتتحول إلى "متوفر" عند الرد الصحيح
+      responseCode: "pending",
       lat: lat || null,
       lng: lng || null,
       createdAt: new Date().toISOString()
