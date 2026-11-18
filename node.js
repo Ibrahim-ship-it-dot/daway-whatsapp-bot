@@ -45,7 +45,7 @@ if (!fs.existsSync(SESSIONS_DIR)) {
   fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 }
 
-// دالة لحفظ الـ creds في فايربيس
+// دالة لحفظ الـ creds في فايربيس لضمان عدم فقدانها عند ريستارت سيرفر Render
 async function saveCredsToFirestore(pharmacyId, sessionPath) {
   try {
     const credsPath = path.join(sessionPath, 'creds.json');
@@ -61,7 +61,7 @@ async function saveCredsToFirestore(pharmacyId, sessionPath) {
   }
 }
 
-// دالة لاسترجاع الـ creds من فايربيس
+// دالة لاسترجاع الـ creds من فايربيس قبل بدء الجلسة
 async function restoreCredsFromFirestore(pharmacyId, sessionPath) {
   try {
     const doc = await db.collection("whatsapp_sessions").doc(pharmacyId).get();
@@ -168,23 +168,25 @@ async function startPharmacySession(pharmacyId) {
 
       // الشرط الحصري: أن تكون الرسالة هي كلمة "متوفر" فقط لا غير
       if (text === "متوفر") {
-        console.log(`💊 الصيدلية (${pharmacyId}) ردت بـ ("متوفر") وتم الحفظ في Firebase!`);
+        console.log(`💊 الصيدلية (${pharmacyId}) ردت بـ ("متوفر") وتم البحث في Firebase!`);
         try {
           const requestsRef = db.collection("medicine_requests");
-          const querySnapshot = await requestsRef.where("status", "==", "pending").get();
+          
+          // 🔥 البحث عن الطلبات التي حالتها "جاري الرد" (مطابقة لحالة الفايربيس لديك)
+          const querySnapshot = await requestsRef.where("status", "==", "جاري الرد").get();
 
           if (querySnapshot.empty) {
-            console.log("⚠️ لا توجد طلبات معلقة (pending) حالياً.");
+            console.log("⚠️ لا توجد طلبات بحالة ('جاري الرد') حالياً.");
           } else {
             for (const doc of querySnapshot.docs) {
               await doc.ref.update({
-                status: "available",
+                status: "متوفر",
                 availablePharmacyPhone: pharmacyId,
-                responseCode: "متوفر", // حفظ الكلمة "متوفر" حصرياً في الحقل
+                responseCode: "متوفر", 
                 responseMessage: text,
                 updatedAt: new Date().toISOString()
               });
-              console.log(`✅ تم تحديث الطلب (${doc.id}) في Firebase بالقيمة ("متوفر") بنجاح`);
+              console.log(`✅ تم تحديث الطلب (${doc.id}) في Firebase إلى ("متوفر") بنجاح`);
               await sock.sendMessage(sender, { text: "✅ تم تسجيل ردك (متوفر) بنجاح. شكراً لك!" });
               break;
             }
@@ -247,7 +249,7 @@ app.post('/disconnect/:pharmacyId', async (req, res) => {
     const { pharmacyId } = req.params;
     const sessionPath = path.join(SESSIONS_DIR, `session_${pharmacyId}`);
     if (sessions[pharmacyId]?.sock) {
-      try { await sessions[pharmacyId].sock.logout(); } catch(e){}
+      try { await sessions[pharmacyId]?.sock.logout(); } catch(e){}
       delete sessions[pharmacyId];
     }
     if (fs.existsSync(sessionPath)) fs.rmSync(sessionPath, { recursive: true, force: true });
@@ -267,7 +269,7 @@ function getDistanceInKm(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// مسار استقبال الاستعلام وإرساله للصيدليات مع تنبيه الصيدلي بالرد بكلمة "متوفر" حصرياً
+// مسار استقبال الاستعلام وإرساله للصيدليات مع ضبط الحالة الابتدائية لـ "جاري الرد"
 app.post('/send', async (req, res) => {
   try {
     const { medicine, userPhone, askId, lat, lng, range } = req.body;
@@ -305,13 +307,13 @@ app.post('/send', async (req, res) => {
       }
     }
 
-    // حفظ الاستعلام في medicine_requests مع تعيين القيمة الابتدائية بانتظار الرد
+    // حفظ الاستعلام في medicine_requests بحالة "جاري الرد" ليتوافق مع استعلام البوت
     await db.collection("medicine_requests").doc(askId).set({
       medicine,
       userPhone,
       askId,
-      status: "pending",
-      responseCode: "pending", // تبدأ بانتظار الرد وتتحول إلى "متوفر" عند الرد الصحيح
+      status: "جاري الرد",
+      responseCode: "pending",
       lat: lat || null,
       lng: lng || null,
       createdAt: new Date().toISOString()
