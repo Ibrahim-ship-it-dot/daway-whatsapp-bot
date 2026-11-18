@@ -1,11 +1,11 @@
 {
-  "name": "daway-bot",
+  "name": "daway-whatsapp-bot",
   "version": "1.0.0",
+  "description": "WhatsApp Bot for Daway",
   "main": "node.js",
   "scripts": {
     "start": "node node.js"
   },
-  {
   "dependencies": {
     "@whiskeysockets/baileys": "6.7.8",
     "express": "^4.18.2",
@@ -14,4 +14,3 @@
     "qrcode": "^1.5.3"
   }
 }
-
