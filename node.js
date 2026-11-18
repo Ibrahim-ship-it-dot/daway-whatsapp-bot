@@ -138,27 +138,36 @@ async function startPharmacySession(pharmacyId) {
     await saveCredsToFirestore(pharmacyId, sessionPath);
   });
 
-  // الاستماع لرد الصيدلي بكلمة متوفر وتحديث الطلب في Firebase
+  // الاستماع لرد الصيدلي بكلمة متوفر وتحديث الطلب في Firebase بدقة تامة
   sock.ev.on('messages.upsert', async ({ messages }) => {
     const msg = messages[0];
     if (!msg.message || msg.key.fromMe) return;
     const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
     const sender = msg.key.remoteJid;
 
+    console.log(`📥 رسالة واردة من الصيدلية (${pharmacyId}): "${text}"`);
+
     if (text.trim().toLowerCase().includes("متوفر") || text.trim().toLowerCase().includes("موجود")) {
-      console.log(`💊 الصيدلية (${pharmacyId}) أكدت توفر الدواء!`);
+      console.log(`💊 الصيدلية (${pharmacyId}) أكدت توفر الدواء! جاري البحث عن أحدث طلب في Firebase...`);
       try {
         const requestsRef = db.collection("medicine_requests");
-        const querySnapshot = await requestsRef.where("status", "==", "pending").get();
+        
+        // جلب أحدث طلب أُرسل لهذه الصيدلية أو أي طلب نشط
+        const querySnapshot = await requestsRef
+          .where("status", "==", "pending")
+          .get();
 
-        if (!querySnapshot.empty) {
+        if (querySnapshot.empty) {
+          console.log("⚠️ لا توجد طلبات بحالة pending حالياً في قاعدة البيانات.");
+        } else {
+          // تحديث أول طلب معلق وإثبات أن هذه الصيدلية هي التي ردت
           for (const doc of querySnapshot.docs) {
             await doc.ref.update({
               status: "available",
               availablePharmacyPhone: pharmacyId,
               updatedAt: new Date().toISOString()
             });
-            console.log(`✅ تم تحديث حالة الطلب (${doc.id}) في Firebase بنجاح`);
+            console.log(`✅ تم تحديث حالة الطلب (${doc.id}) في Firebase بواسطة الصيدلية (${pharmacyId}) بنجاح`);
             await sock.sendMessage(sender, { text: "✅ تم تسجيل ردك بنجاح وإبلاغ العميل في منصة دواي. شكراً لك!" });
             break;
           }
@@ -238,7 +247,7 @@ function getDistanceInKm(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// مسار استقبال الاستعلام وإرساله للصيدليات
+// مسار استقبال الاستعلام وإرساله للصيدليات وحفظه في medicine_requests
 app.post('/send', async (req, res) => {
   try {
     const { medicine, userPhone, askId, lat, lng, range } = req.body;
@@ -275,6 +284,17 @@ app.post('/send', async (req, res) => {
         sentCount++;
       }
     }
+
+    // حفظ الاستعلام في medicine_requests بحالة pending ليتسنى للصيدلي تحديثه عند الرد
+    await db.collection("medicine_requests").doc(askId).set({
+      medicine,
+      userPhone,
+      askId,
+      status: "pending",
+      lat: lat || null,
+      lng: lng || null,
+      createdAt: new Date().toISOString()
+    });
 
     res.json({ success: true, message: `تم إرسال الاستعلام إلى ${sentCount} صيدلية متصلة ضمن النطاق` });
   } catch (err) {
