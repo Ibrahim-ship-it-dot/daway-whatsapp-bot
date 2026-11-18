@@ -136,12 +136,19 @@ async function startPharmacySession(pharmacyId) {
     await saveCredsToFirestore(pharmacyId, sessionPath);
   });
 
-  // الاستماع للرد وتطبيق الكلمات الدلالية الشاملة للتوفر (تسجيل القيمة 1)
+  // الاستماع للرد وتطبيق الكلمات الدلالية مع فلترة رسائل القنوات والمجموعات
   sock.ev.on('messages.upsert', async ({ messages }) => {
     const msg = messages[0];
     if (!msg.message || msg.key.fromMe) return;
-    const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").trim().toLowerCase();
+    
     const sender = msg.key.remoteJid;
+
+    // 🛑 تجاهل تام لأي رسائل واردة من قنوات الواتساب أو المجموعات العامة
+    if (sender.includes('@newsletter') || sender.endsWith('@g.us')) {
+      return; 
+    }
+
+    const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").trim().toLowerCase();
 
     console.log(`📥 رسالة واردة من الصيدلية (${pharmacyId}): "${text}"`);
 
