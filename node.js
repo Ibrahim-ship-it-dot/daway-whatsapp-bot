@@ -1,6 +1,5 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
-const express = require('http');
 const expressApp = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -17,7 +16,6 @@ const io = new Server(server, {
 
 app.use(expressApp.json());
 
-// متغير لحفظ آخر QR كود وصل
 let latestQR = null;
 let connectionStatus = 'disconnected';
 let sock = null;
@@ -27,11 +25,10 @@ async function connectToWhatsApp() {
 
     sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true,
-        logger: pino({ level: 'silent' })
+        printQRInTerminal: false,
+        logger: pino({ level: 'silent' }),
+        browser: ["Chrome (Linux)", "", ""] // تحديد متصفح ثابت لمنع خطأ 405 من واتساب
     });
-
-    sock.udarstven = state;
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
@@ -44,13 +41,20 @@ async function connectToWhatsApp() {
         }
 
         if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('⚠️ انقطع الاتصال، السبب:', lastDisconnect.error, 'جاري إعادة المحاولة:', shouldReconnect);
-            connectionStatus = 'disconnected';
-            io.emit('status', { status: 'disconnected' });
+            const statusCode = (lastDisconnect.error instanceof Boom)?.output?.statusCode;
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
             
+            console.log('⚠️ انقطع الاتصال، السبب:', lastDisconnect.error?.message || lastDisconnect.error);
+
             if (shouldReconnect) {
-                connectToWhatsApp();
+                console.log('🔄 جاري إعادة المحاولة خلال 5 ثواني...');
+                setTimeout(() => {
+                    connectToWhatsApp();
+                }, 5000); // انتظار 5 ثواني لتجنب الضغط على الـ WebSocket
+            } else {
+                console.log('🔴 تم تسجيل الخروج نهائياً.');
+                connectionStatus = 'disconnected';
+                io.emit('status', { status: 'disconnected' });
             }
         } else if (connection === 'open') {
             console.log('✅ متصل بالواتساب بنجاح!');
@@ -75,18 +79,11 @@ async function connectToWhatsApp() {
 
             console.log(`📩 رسالة من [${sender}]: ${textMessage}`);
 
-            // إرسال الرسالة للـ HTML عبر Socket.io
             io.emit('new_message', {
                 sender: sender,
                 text: textMessage,
                 time: new Date().toLocaleTimeString()
             });
-
-            // هنا ممكن تضيف منطق الرد التلقائي لبوت دواي
-            if (textMessage.trim().length > 0) {
-                // مثال لرد آلي بسيط:
-                // await sock.sendMessage(sender, { text: 'أهلاً بك في بوت دواي، جاري معالجة طلبك...' });
-            }
         }
     });
 }
@@ -109,7 +106,6 @@ app.post('/send-message', async (req, res) => {
     }
 });
 
-// فحص حالة السيرفر
 app.get('/', (req, res) => {
     res.send('Daway WhatsApp Bot Server is running!');
 });
