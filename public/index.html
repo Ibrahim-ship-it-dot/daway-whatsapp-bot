@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الرئيسية - اسأل الصيدلية</title>
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00bcd4"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div id="loading-screen" style="display:none !important;visibility:hidden !important;pointer-events:none !important;"></div>
+
+<button id="installAppBtn" style="
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  background-color: #00bcd4;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 25px;
+  font-family: 'Cairo', sans-serif;
+  font-size: 16px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  cursor: pointer;
+  display: none;
+  z-index: 9999;
+">
+📱 تثبيت التطبيق
+</button>
+<button id="sidebarToggle" class="sidebar-toggle-button" onclick="toggleSidebar()">☰ </button>
+<button id="infoSidebarToggle" class="sidebar-toggle-button" onclick="toggleInfoSidebar()">💡</button>
+
+<style>
+  #notifFabBtn {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9998;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 20px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  #notifFabBtn:hover {
+    transform: translateX(-50%) translateY(-1px);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+  }
+  #notifBadgeCount {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #ffffff;
+    font-family: "Cairo", sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 19px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.45);
+    display: none;
+  }
+</style>
+<a id="notifFabBtn" href="notifications.html" title="الإشعارات">
+  <span>🔔</span>
+  <span id="notifBadgeCount">0</span>
+</a>
+
+
+<div id="sidebar">
+    <div class="sidebar-header">
+        <span id="sessionInfo" style="font-weight: 700;"></span>
+        <button onclick="logout()" style="background: #ff4d4d; border-radius: 5px; width: 100px; padding: 5px;">خروج</button>
+    </div>
+
+    <a href="profile.html" style="font-weight: bold; background: #495057; color: white;">⚙️ تعديل الملف الشخصي والموقع</a>
+    
+
+
+    <a id="adminPharmaciesLink" href="pharmacies.html" style="font-weight: bold; background: #0f766e; color: white; display: none;">🏥 إدارة الصيدليات وجلسات الواتساب</a>
+
+    <a id="addphSidebarIncomingAsksLink" href="pharmacist-replies.html" style="display: none; font-weight: bold; background: #0369a1; color: white;">📩 الأسئلة الواردة</a>
+    <div id="previousQuestionsContainer"></div>
+
+</div>
+
+<div id="infoSidebar">
+    <div class="info-content">
+        <h3>🚀 ابحث بذكاء عن دوائك</h3>
+        <p style="font-size:1.0em; font-weight: 400;">وداعًا للبحث الطويل! تطبيق **"اسأل الصيدلية"** بوابتك الفورية للعثور على أدويتك بسهولة وذكاء.</p>
+        <ul>
+            <li><strong>الأقرب والأسرع:</strong> نرسل استعلامك للصيدليات ضمن مسافة (حسب اختيارك).</li>
+            <li><strong>مقارنة فورية:</strong> شاهد حالة توفر الدواء (متوفر/غير متوفر) والمسافة الدقيقة.</li>
+            <li><strong>توفير الجهد:</strong> احصل على ردود سريعة وموثوقة دون الحاجة للتنقل.</li>
+        </ul>
+        <button onclick="closeInfoSidebar()">ابدأ البحث الآن</button>
+
+    </div><a id="editPharmacyBtn" href="addph.html" style="
+    display: none;
+    margin-top: 30px;
+    padding: 10px;
+    background: #007bff;
+    color: white;
+    text-align: center;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1em;
+">
+    ✏️ تعديل الصيدلية
+</a>  <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px;">
+        <h5 style="font-weight: 700;">للتواصل مع المبرمج:</h5>
+        <a href="https://wa.me/09128514785" target="_blank" class="contact-whatsapp" style="display: block; text-align: center; margin-top: 10px; padding: 10px; border-radius: 8px;">
+            <i data-lucide="whatsapp" style="margin-left: 5px; vertical-align: middle;"></i>
+            09128514785 (WhatsApp)
+        </a>
+    </div>
+    <a  style="
+    display: block;
+    margin-top: 30px;
+    padding: 10px;
+    background: #007bff;
+    color: white;
+    text-align: center;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1em;
+">
+</a>
+</div>
+
+<div class="search-container">
+    <h5>✅ ابحث بذكاء عن دوائك في محيطك الجغرافي</h5>
+    <div class="range-selection">
+        <label for="searchRange">نطاق البحث (كم):</label>
+        <select id="searchRange" class="range-select">
+            <option value="1">1 كم</option>
+            <option value="2">2 كم</option>
+            <option value="3">3 كم</option>
+            <option value="4" selected>4 كم (افتراضي)</option>
+            <option value="5">5 كم</option>
+            <option value="6">6 كم</option>
+            <option value="7">7 كم</option>
+            <option value="8">8 كم</option>
+            <option value="9">9 كم</option>
+            <option value="10">10 كم</option>
+            <option value="11">11 كم</option>
+            <option value="12">12 كم</option>
+            <option value="13">13 كم</option>
+        </select>
+    </div>
+
+    <input type="text" id="medicineNameOnly" class="search-input" placeholder="اكتب اسم الدواء هنا" oninput="syncMedicineWithType()">
+
+    <div class="range-selection" style="margin-top: 10px;">
+        <label for="medicineTypeSelect">نوع الدواء:</label>
+        <select id="medicineTypeSelect" class="range-select" onchange="syncMedicineWithType()">
+            <option value="">اختر النوع (اختياري)</option>
+            <option value="حبوب">💊 حبوب / أقراص</option>
+            <option value="كبسولات">💊 كبسولات</option>
+            <option value="دواء سائل (شراب)">🧴 دواء سائل (شراب)</option>
+            <option value="حقن">💉 حقن / إبر</option>
+            <option value="مرهم / كريم">🧴 مرهم / كريم</option>
+            <option value="قطرة">💧 قطرة (عين / أذن / أنف)</option>
+            <option value="بخاخ">🌬️ بخاخ</option>
+            <option value="تحاميل">🩺 تحاميل / لبوس</option>
+        </select>
+    </div>
+
+    <input type="hidden" id="medicineInput">
+
+    <button id="askButton" onclick="goToResultsPage()">اسأل الصيدليات</button>
+
+    <p id="locationSourceIndicator" class="hidden" style="font-size: 13px; color: #555; margin-top: 10px; background-color: #f0f0f0; padding: 5px 10px; border-radius: 5px;"></p>
+</div>
+
+
+<div id="khartoumFallbackMapBox" style="display:none; max-width:520px; margin:14px auto; background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:14px; text-align:right; box-shadow:0 4px 14px rgba(15,23,42,0.08);">
+  <div style="font-weight:800; font-size:14px; color:#0f172a; margin-bottom:6px;">📍 لم يتوفر موقع محفوظ أو تعذر جلب الموقع تلقائياً — حدد موقعك على الخريطة</div>
+  <div style="font-size:12.5px; color:#475569; margin-bottom:10px;">الموقع الافتراضي يبدأ في <strong>الخرطوم</strong>؛ اسحب الدبوس أو انقر على الخريطة في مكانك ثم اضغط حفظ.</div>
+  <div id="indexKhartoumMap" style="height:260px; width:100%; border-radius:10px; border:2px solid #00bcd4; z-index:1;"></div>
+  <div style="display:flex; gap:10px; margin-top:10px; font-size:12px; color:#334155; font-weight:700;">
+    <span id="pickedLatLabel">Lat: 15.500700</span>
+    <span id="pickedLngLabel">Lng: 32.559900</span>
+  </div>
+  <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+    <button type="button" id="savePickedKhartoumLocBtn" style="flex:1; background:#00a854; color:#fff; border:none; border-radius:8px; padding:10px 14px; font-family:'Cairo',sans-serif; font-weight:800; cursor:pointer;">💾 حفظ هذا الموقع</button>
+    <button type="button" id="retryGpsFromMapBtn" style="background:#0284c7; color:#fff; border:none; border-radius:8px; padding:10px 14px; font-family:'Cairo',sans-serif; font-weight:700; cursor:pointer;">🛰️ إعادة محاولة GPS</button>
+  </div>
+  <div id="fallbackMapStatusMsg" style="margin-top:8px; font-size:12.5px; font-weight:700;"></div>
+</div>
+
+<div id="errorBox" class="hidden"></div>
+
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script src="script.js"></script>
+
+
+
+
+
+
+
+
+
+
+<script>
+  (function autoLocateThenFallbackKhartoumMap() {
+    const KHARTOUM_LAT = 15.5007;
+    const KHARTOUM_LNG = 32.5599;
+
+    let chosenLat = KHARTOUM_LAT;
+    let chosenLng = KHARTOUM_LNG;
+    let khMap = null;
+    let khMarker = null;
+    let pendingMedicine = "";
+    let pendingRange = "4";
+
+    function isValidCoord(v) {
+      const n = parseFloat(v);
+      return !isNaN(n) && isFinite(n) && Math.abs(n) > 0.0001;
+    }
+
+    function getCurrentMedicineAndRange() {
+      const nameEl = document.getElementById("medicineNameOnly");
+      const typeEl = document.getElementById("medicineTypeSelect");
+      const hiddenEl = document.getElementById("medicineInput");
+      const rangeEl = document.getElementById("searchRange");
+
+      const nameVal = nameEl ? String(nameEl.value || "").trim() : "";
+      const typeVal = typeEl ? String(typeEl.value || "").trim() : "";
+      const medicine = nameVal
+        ? (typeVal ? (nameVal + " (" + typeVal + ")") : nameVal)
+        : (hiddenEl ? String(hiddenEl.value || "").trim() : "");
+
+      if (hiddenEl && medicine) hiddenEl.value = medicine;
+      const range = rangeEl && rangeEl.value ? String(rangeEl.value).trim() : "4";
+      return { medicine, range };
+    }
+
+    function goToResultsNow(medicine, range) {
+      const med = String(medicine || pendingMedicine || "").trim();
+      const rng = String(range || pendingRange || "4").trim();
+      if (med) {
+        const params = new URLSearchParams({
+          medicine: med,
+          range: rng,
+          autoAsk: "1"
+        });
+        window.location.assign("results.html?" + params.toString());
+      } else {
+        const params = new URLSearchParams({
+          range: rng,
+          showPharmacies: "1"
+        });
+        window.location.assign("results.html?" + params.toString());
+      }
+    }
+
+    async function persistLocation(lat, lng) {
+      const fixLat = Number(lat).toFixed(6);
+      const fixLng = Number(lng).toFixed(6);
+      localStorage.setItem("userLat", fixLat);
+      localStorage.setItem("userLng", fixLng);
+
+      const digits = String(localStorage.getItem("userPhone") || "").replace(/\D/g, "");
+      if (digits && typeof db !== "undefined" && db) {
+        try {
+          await db.collection("Users").doc(digits).set({
+            phone: digits,
+            lat: parseFloat(fixLat),
+            lng: parseFloat(fixLng),
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (_) {}
+      }
+
+      const ind = document.getElementById("locationSourceIndicator");
+      if (ind) {
+        ind.classList.remove("hidden");
+        ind.textContent = "📍 الموقع المحفوظ: " + fixLat + ", " + fixLng;
+      }
+    }
+
+    async function checkSavedLocation() {
+      const lLat = localStorage.getItem("userLat");
+      const lLng = localStorage.getItem("userLng");
+      if (isValidCoord(lLat) && isValidCoord(lLng)) {
+        return { ok: true, lat: parseFloat(lLat), lng: parseFloat(lLng) };
+      }
+
+      const digits = String(localStorage.getItem("userPhone") || "").replace(/\D/g, "");
+      if (digits && typeof db !== "undefined" && db) {
+        try {
+          const snap = await db.collection("Users").doc(digits).get();
+          if (snap.exists) {
+            const d = snap.data() || {};
+            if (isValidCoord(d.lat) && isValidCoord(d.lng)) {
+              localStorage.setItem("userLat", String(parseFloat(d.lat)));
+              localStorage.setItem("userLng", String(parseFloat(d.lng)));
+              return { ok: true, lat: parseFloat(d.lat), lng: parseFloat(d.lng) };
+            }
+          }
+        } catch (_) {}
+      }
+      return { ok: false };
+    }
+
+    function updateKhartoumLabels(lat, lng) {
+      chosenLat = Number(lat);
+      chosenLng = Number(lng);
+      const latLbl = document.getElementById("pickedLatLabel");
+      const lngLbl = document.getElementById("pickedLngLabel");
+      if (latLbl) latLbl.textContent = "Lat: " + chosenLat.toFixed(6);
+      if (lngLbl) lngLbl.textContent = "Lng: " + chosenLng.toFixed(6);
+    }
+
+    function showBottomKhartoumMapAfterFailure(reasonText) {
+      const box = document.getElementById("khartoumFallbackMapBox");
+      if (box) {
+        box.style.display = "block";
+        box.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+      const statusEl = document.getElementById("fallbackMapStatusMsg");
+      if (statusEl) {
+        statusEl.style.color = "#b91c1c";
+        statusEl.textContent = reasonText || "⚠️ تعذر التحديد التلقائي للموقع — حرّك الدبوس في الخرطوم ثم اضغط حفظ.";
+      }
+
+      updateKhartoumLabels(KHARTOUM_LAT, KHARTOUM_LNG);
+
+      const mapContainer = document.getElementById("indexKhartoumMap");
+      if (!mapContainer || typeof L === "undefined") return;
+
+      if (!khMap) {
+        khMap = L.map("indexKhartoumMap", { zoomControl: true }).setView([KHARTOUM_LAT, KHARTOUM_LNG], 12);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "&copy; OpenStreetMap",
+          maxZoom: 19
+        }).addTo(khMap);
+
+        khMarker = L.marker([KHARTOUM_LAT, KHARTOUM_LNG], { draggable: true, autoPan: true }).addTo(khMap);
+
+        khMarker.on("dragend", function() {
+          const p = khMarker.getLatLng();
+          updateKhartoumLabels(p.lat, p.lng);
+        });
+
+        khMap.on("click", function(ev) {
+          if (!ev || !ev.latlng) return;
+          khMarker.setLatLng(ev.latlng);
+          updateKhartoumLabels(ev.latlng.lat, ev.latlng.lng);
+        });
+      } else {
+        khMarker.setLatLng([KHARTOUM_LAT, KHARTOUM_LNG]);
+        khMap.setView([KHARTOUM_LAT, KHARTOUM_LNG], 12);
+      }
+
+      setTimeout(() => {
+        if (khMap && typeof khMap.invalidateSize === "function") {
+          khMap.invalidateSize();
+        }
+      }, 200);
+    }
+
+    function tryAutoGpsThenNavigate(medicine, range) {
+      pendingMedicine = medicine || "";
+      pendingRange = range || "4";
+
+      const statusEl = document.getElementById("fallbackMapStatusMsg");
+      const box = document.getElementById("khartoumFallbackMapBox");
+      if (box && box.style.display === "block" && statusEl) {
+        statusEl.style.color = "#0369a1";
+        statusEl.textContent = "⏳ جاري محاولة التحديد التلقائي للموقع (GPS)...";
+      }
+
+      if (!navigator.geolocation) {
+        showBottomKhartoumMapAfterFailure("⚠️ تعذر التحديد التلقائي للموقع — حرّك الدبوس في الخرطوم ثم اضغط حفظ.");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          await persistLocation(lat, lng);
+          goToResultsNow(pendingMedicine, pendingRange);
+        },
+        (err) => {
+          let msg = "⚠️ تعذر استيراد الموقع تلقائياً — حدد موقعك على الخريطة في الخرطوم واضغط حفظ.";
+          if (err && err.code === err.PERMISSION_DENIED) {
+            msg = "⚠️ تم رفض إذن الموقع التلقائي — حرّك الدبوس على الخريطة في الخرطوم واضغط حفظ.";
+          }
+          showBottomKhartoumMapAfterFailure(msg);
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      );
+    }
+
+    async function handleAskOrAutoLocate(e) {
+      if (e && typeof e.preventDefault === "function") e.preventDefault();
+      if (e && typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+
+      const { medicine, range } = getCurrentMedicineAndRange();
+      pendingMedicine = medicine;
+      pendingRange = range;
+
+      if (!medicine) {
+        alert("الرجاء كتابة اسم الدواء أولاً");
+        const nameEl = document.getElementById("medicineNameOnly");
+        if (nameEl) nameEl.focus();
+        return false;
+      }
+
+      const saved = await checkSavedLocation();
+      if (saved.ok) {
+        goToResultsNow(medicine, range);
+        return false;
+      }
+
+      tryAutoGpsThenNavigate(medicine, range);
+      return false;
+    }
+
+    window.goToResultsPage = handleAskOrAutoLocate;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const askBtn = document.getElementById("askButton");
+      if (askBtn) {
+        askBtn.type = "button";
+        askBtn.setAttribute("onclick", "return window.goToResultsPage(event);");
+        askBtn.addEventListener("click", handleAskOrAutoLocate, true);
+      }
+
+      const saveBtn = document.getElementById("savePickedKhartoumLocBtn");
+      if (saveBtn) {
+        saveBtn.addEventListener("click", async () => {
+          saveBtn.disabled = true;
+          await persistLocation(chosenLat, chosenLng);
+          goToResultsNow(pendingMedicine, pendingRange);
+        });
+      }
+
+      const retryBtn = document.getElementById("retryGpsFromMapBtn");
+      if (retryBtn) {
+        retryBtn.addEventListener("click", () => {
+          const { medicine, range } = getCurrentMedicineAndRange();
+          tryAutoGpsThenNavigate(medicine || pendingMedicine, range || pendingRange);
+        });
+      }
+    });
+  })();
+</script>
+
+
+<script>
+  (function killIndexWaitScreenImmediately() {
+    function removeWaitScreen() {
+      const loader = document.getElementById("loading-screen");
+      if (loader) {
+        loader.style.setProperty("display", "none", "important");
+        loader.style.setProperty("opacity", "0", "important");
+        loader.style.setProperty("visibility", "hidden", "important");
+        loader.style.setProperty("pointer-events", "none", "important");
+        if (loader.parentNode) {
+          loader.parentNode.removeChild(loader);
+        }
+      }
+    }
+
+    removeWaitScreen();
+    if (document.readyState !== "loading") {
+      setTimeout(removeWaitScreen, 50);
+    }
+    document.addEventListener("DOMContentLoaded", () => setTimeout(removeWaitScreen, 50));
+    window.addEventListener("load", removeWaitScreen);
+    setTimeout(removeWaitScreen, 700);
+  })();
+</script>
+
+
+<script>
+  (async function syncIndexSidebarToMatchAddph() {
+    const ADMIN_NUMBER = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+
+    const digits = digitsOnly(localStorage.getItem("userPhone") || "");
+    const isAdmin = Boolean(digits) && (
+      digits === ADMIN_NUMBER ||
+      (tail9(digits).length === 9 && tail9(digits) === tail9(ADMIN_NUMBER))
+    );
+
+    let isPh = localStorage.getItem("accountType") === "pharmacist";
+    let phName = String(localStorage.getItem("pharmacyName") || "").trim();
+
+    if (digits && typeof db !== "undefined" && db) {
+      try {
+        const dSnap = await db.collection("pharmacies").doc(digits).get();
+        if (dSnap.exists) {
+          const d = dSnap.data() || {};
+          isPh = true;
+          phName = String(d.name || d.pharmacyName || phName || "").trim();
+        }
+        if (!isPh) {
+          const qSnap = await db.collection("pharmacies").where("phone", "==", digits).limit(1).get();
+          if (!qSnap.empty) {
+            const d = qSnap.docs[0].data() || {};
+            isPh = true;
+            phName = String(d.name || d.pharmacyName || phName || "").trim();
+          }
+        }
+      } catch (_) {}
+    }
+
+    const sessEl = document.getElementById("sessionInfo");
+    if (sessEl) {
+      sessEl.textContent = (isPh && phName) ? phName : (digits || "غير مسجل");
+    }
+
+    const adminLink = document.getElementById("adminPharmaciesLink");
+    if (adminLink) {
+      adminLink.style.setProperty("display", isAdmin ? "block" : "none", "important");
+    }
+
+    const incomingLink = document.getElementById("addphSidebarIncomingAsksLink");
+    if (incomingLink) {
+      incomingLink.style.setProperty("display", isPh ? "block" : "none", "important");
+    }
+  })();
+</script>
+
+
+<script>
+  (async function ensureAllSidebarButtonsAndRoles() {
+    const ADMIN_PHONE = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+
+    const digits = digitsOnly(localStorage.getItem("userPhone") || "");
+    const isAdmin = Boolean(digits) && (
+      digits === ADMIN_PHONE ||
+      (tail9(digits).length === 9 && tail9(digits) === tail9(ADMIN_PHONE))
+    );
+
+    let isPharmacist = localStorage.getItem("accountType") === "pharmacist";
+    let phName = String(localStorage.getItem("pharmacyName") || "").trim();
+
+    if (digits && typeof db !== "undefined" && db) {
+      try {
+        const dSnap = await db.collection("pharmacies").doc(digits).get();
+        if (dSnap.exists) {
+          const d = dSnap.data() || {};
+          isPharmacist = true;
+          phName = String(d.name || d.pharmacyName || phName || "").trim();
+        }
+        if (!isPharmacist) {
+          const qSnap = await db.collection("pharmacies").where("phone", "==", digits).limit(1).get();
+          if (!qSnap.empty) {
+            const d = qSnap.docs[0].data() || {};
+            isPharmacist = true;
+            phName = String(d.name || d.pharmacyName || phName || "").trim();
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (isPharmacist) localStorage.setItem("accountType", "pharmacist");
+    if (phName) localStorage.setItem("pharmacyName", phName);
+
+    const sessionEl = document.getElementById("sessionInfo");
+    if (sessionEl) {
+      sessionEl.textContent = (isPharmacist && phName) ? phName : (digits || "غير مسجل");
+    }
+
+    const menuItems = [
+     
+           { href: "pharmacist-replies.html", label: "📩 الرد على الأسئلة الواردة", bg: "#0369a1", role: "pharmacist" },
+           { href: "profile.html", label: "⚙️ تعديل الملف الشخصي والموقع", bg: "#495057", role: "all" },
+      { href: "history.html", label: "📜 اسئيلتي السابقه", bg: "#0284c7", role: "all" },
+      { href: "notifications.html", label: "🔔 الإشعارات", bg: "#475569", role: "all" },
+
+      { href: "addph.html", label: "✏️ تعديل بيانات الصيدلية", bg: "#0f766e", role: "pharmacist" },
+      { href: "pharmacies.html", label: "🏥 إدارة الصيدليات وجلسات الواتساب", bg: "#0f766e", role: "admin" }
+    ];
+
+    const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
+    sidebars.forEach((sb) => {
+      const prevContainer = sb.querySelector("#previousQuestionsContainer");
+      menuItems.forEach((item) => {
+        let link = sb.querySelector('a[href="' + item.href + '"]');
+        if (!link) {
+          link = document.createElement("a");
+          link.href = item.href;
+          link.textContent = item.label;
+          link.style.cssText = "font-weight: bold; background: " + item.bg + "; color: white;";
+          if (item.href === "pharmacies.html") {
+            link.id = "adminPharmaciesLink";
+          }
+          if (prevContainer) {
+            sb.insertBefore(link, prevContainer);
+          } else {
+            sb.appendChild(link);
+          }
+        }
+        link.setAttribute("data-menu-role", item.role);
+
+        if (item.role === "admin") {
+          link.style.setProperty("display", isAdmin ? "block" : "none", "important");
+        } else if (item.role === "pharmacist") {
+          link.style.setProperty("display", (isPharmacist || isAdmin) ? "block" : "none", "important");
+        } else {
+          link.style.setProperty("display", "block", "important");
+        }
+      });
+    });
+
+    document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
+      el.style.setProperty("display", isAdmin ? "block" : "none", "important");
+    });
+  })();
+</script>
+
+</body>
+</html>

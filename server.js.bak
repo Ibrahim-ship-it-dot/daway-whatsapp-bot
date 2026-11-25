@@ -1,0 +1,918 @@
+const fs = require("fs");
+const path = require("path");
+const express = require("express");
+const QRCode = require("qrcode");
+const pino = require("pino");
+const firebase = require("firebase/compat/app");
+require("firebase/compat/firestore");
+
+const {
+  default: makeWASocket,
+  useMultiFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+} = require("@whiskeysockets/baileys");
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const PUBLIC_DIR = path.join(__dirname, "public");
+const SESSIONS_ROOT = path.join(__dirname, "sessions");
+const SESSION_IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+
+app.use(express.json());
+app.use(express.static(PUBLIC_DIR));
+
+if (!fs.existsSync(PUBLIC_DIR)) {
+  fs.mkdirSync(PUBLIC_DIR, { recursive: true });
+}
+if (!fs.existsSync(SESSIONS_ROOT)) {
+  fs.mkdirSync(SESSIONS_ROOT, { recursive: true });
+}
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDlEBzVFhJzFkDI4mWnTSEQbUGOYBoVvbI",
+  authDomain: "group-2f790.firebaseapp.com",
+  projectId: "group-2f790",
+  storageBucket: "group-2f790.firebasestorage.app",
+  messagingSenderId: "532610990999",
+  appId: "1:532610990999:web:1ad2bf5149c68774e57ad2",
+};
+
+let db;
+try {
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  console.log("✅ Firebase initialized (Client SDK)");
+} catch (e) {
+  console.error("🔥 Firebase Init Failed:", e);
+}
+
+const sessionsMap = new Map();
+const sentQuestionMetaMap = new Map();
+
+function cleanPhone(phone) {
+  return String(phone || "").replace(/\D/g, "");
+}
+
+function sanitizeSessionId(sessionId) {
+  return String(sessionId || "").trim().replace(/[^a-zA-Z0-9_-]/g, "");
+}
+
+function normalizeSudanPhone(phone) {
+  let cleaned = cleanPhone(phone);
+  if (!cleaned) return "";
+  if (cleaned.startsWith("00")) cleaned = cleaned.slice(2);
+  if (cleaned.length === 9 && (cleaned.startsWith("9") || cleaned.startsWith("1"))) {
+    cleaned = "249" + cleaned;
+  } else if (cleaned.length === 10 && cleaned.startsWith("0")) {
+    cleaned = "249" + cleaned.slice(1);
+  }
+  return cleaned;
+}
+
+function phonesMatch(a, b) {
+  const ca = normalizeSudanPhone(a) || cleanPhone(a);
+  const cb = normalizeSudanPhone(b) || cleanPhone(b);
+  if (!ca || !cb) return false;
+  if (ca === cb) return true;
+  const ta = ca.length > 9 ? ca.slice(-9) : ca;
+  const tb = cb.length > 9 ? cb.slice(-9) : cb;
+  return ta.length >= 7 && ta === tb;
+}
+
+function getSessionDir(sessionId) {
+  const safeId = sanitizeSessionId(sessionId);
+  return path.join(SESSIONS_ROOT, safeId);
+}
+
+function listAllSessionFolders() {
+  const names = new Set();
+  if (fs.existsSync(SESSIONS_ROOT)) {
+    for (const dirent of fs.readdirSync(SESSIONS_ROOT, { withFileTypes: true })) {
+      if (dirent.isDirectory()) {
+        const cleanName = sanitizeSessionId(dirent.name);
+        if (cleanName) names.add(cleanName);
+      }
+    }
+  }
+  for (const key of sessionsMap.keys()) {
+    const cleanKey = sanitizeSessionId(key);
+    if (cleanKey) names.add(cleanKey);
+  }
+  return Array.from(names);
+}
+
+function listSavedSessionEntries() {
+  const entries = [];
+  if (!fs.existsSync(SESSIONS_ROOT)) return entries;
+
+  for (const dirent of fs.readdirSync(SESSIONS_ROOT, { withFileTypes: true })) {
+    if (!dirent.isDirectory()) continue;
+    const sid = sanitizeSessionId(dirent.name);
+    if (!sid) continue;
+    const credsPath = path.join(SESSIONS_ROOT, sid, "creds.json");
+    if (!fs.existsSync(credsPath)) continue;
+
+    let credPhone = "";
+    let credLid = "";
+    try {
+      const credsJson = JSON.parse(fs.readFileSync(credsPath, "utf8"));
+      const meId = credsJson?.me?.id || "";
+      credPhone = cleanPhone(meId.split(":")[0].split("@")[0]);
+      const meLid = credsJson?.me?.lid || "";
+      if (meLid) {
+        credLid = `${meLid.split(":")[0].split("@")[0]}@lid`;
+      }
+    } catch (_) {}
+
+    entries.push({
+      sessionId: sid,
+      credPhone,
+      credLid,
+    });
+  }
+  return entries;
+}
+
+function findMatchingSessionEntryForPharmacy(docId, pharmacyData = {}, savedEntries = []) {
+  const explicitSid = sanitizeSessionId(pharmacyData.sessionId || "");
+  if (explicitSid) {
+    const found = savedEntries.find((s) => s.sessionId === explicitSid);
+    if (found) return found;
+  }
+
+  const byDocId = savedEntries.find((s) => s.sessionId === docId);
+  if (byDocId) return byDocId;
+
+  const candidates = [
+    pharmacyData.phone,
+    pharmacyData.whatsappJid ? String(pharmacyData.whatsappJid).split("@")[0] : "",
+    docId,
+  ].filter(Boolean);
+
+  for (const cand of candidates) {
+    const matched = savedEntries.find(
+      (s) => phonesMatch(s.sessionId, cand) || phonesMatch(s.credPhone, cand)
+    );
+    if (matched) return matched;
+  }
+
+  return null;
+}
+
+function findMatchingPharmacyForSession(sessionEntry, pharmaciesList = []) {
+  for (const ph of pharmaciesList) {
+    const d = ph.data || {};
+    if (d.sessionId && sanitizeSessionId(d.sessionId) === sessionEntry.sessionId) {
+      return ph;
+    }
+    if (ph.id === sessionEntry.sessionId) {
+      return ph;
+    }
+    const candidates = [
+      d.phone,
+      d.whatsappJid ? String(d.whatsappJid).split("@")[0] : "",
+      ph.id,
+    ].filter(Boolean);
+
+    for (const cand of candidates) {
+      if (
+        (sessionEntry.credPhone && phonesMatch(sessionEntry.credPhone, cand)) ||
+        phonesMatch(sessionEntry.sessionId, cand)
+      ) {
+        return ph;
+      }
+    }
+  }
+  return null;
+}
+
+function getOwnIdentifiers(sess) {
+  const rawId = sess?.sock?.user?.id || sess?.sock?.authState?.creds?.me?.id || "";
+  const ownPhone = cleanPhone(rawId.split(":")[0].split("@")[0]);
+  const rawLid = sess?.sock?.user?.lid || sess?.sock?.authState?.creds?.me?.lid || "";
+  const ownLid = rawLid ? `${rawLid.split(":")[0].split("@")[0]}@lid` : "";
+  return { ownPhone, ownLid };
+}
+
+function isSelfChatJid(sess, jid) {
+  const { ownPhone, ownLid } = getOwnIdentifiers(sess);
+  const str = String(jid || "").trim();
+  if (!str) return false;
+  if (ownLid && str === ownLid) return true;
+  const cleaned = cleanPhone(str.split("@")[0]);
+  return Boolean(cleaned && ownPhone && phonesMatch(cleaned, ownPhone));
+}
+
+function resolveSelfTargetJid(sess, sessionEntry = {}) {
+  const { ownPhone, ownLid } = getOwnIdentifiers(sess);
+  const normalizedOwn =
+    normalizeSudanPhone(ownPhone) ||
+    ownPhone ||
+    normalizeSudanPhone(sessionEntry.credPhone) ||
+    sessionEntry.credPhone;
+
+  if (normalizedOwn) return `${normalizedOwn}@s.whatsapp.net`;
+  if (ownLid) return ownLid;
+  if (sessionEntry.credLid) return sessionEntry.credLid;
+  return null;
+}
+
+function deg2rad(deg) {
+  return deg * (Math.PI / 180);
+}
+
+function getDistanceInKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) *
+      Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function unwrapMessage(message) {
+  if (!message) return null;
+  return (
+    message.ephemeralMessage?.message ||
+    message.viewOnceMessage?.message ||
+    message.viewOnceMessageV2?.message ||
+    message.editedMessage?.message ||
+    message
+  );
+}
+
+function extractMessageText(message) {
+  const unwrapped = unwrapMessage(message);
+  if (!unwrapped) return "";
+
+  return (
+    unwrapped.conversation ||
+    unwrapped.extendedTextMessage?.text ||
+    unwrapped.imageMessage?.caption ||
+    unwrapped.videoMessage?.caption ||
+    unwrapped.buttonsResponseMessage?.selectedDisplayText ||
+    unwrapped.listResponseMessage?.title ||
+    ""
+  ).trim();
+}
+
+function extractQuotedMessageData(message, sess) {
+  const unwrapped = unwrapMessage(message);
+  if (!unwrapped) return null;
+
+  const ctx =
+    unwrapped.extendedTextMessage?.contextInfo ||
+    unwrapped.imageMessage?.contextInfo ||
+    unwrapped.videoMessage?.contextInfo ||
+    unwrapped.documentMessage?.contextInfo ||
+    null;
+
+  if (!ctx) return null;
+
+  const stanzaId = ctx.stanzaId || "";
+  const participant = ctx.participant || "";
+  const remoteJid = ctx.remoteJid || "";
+  let quotedText = ctx.quotedMessage ? extractMessageText(ctx.quotedMessage) : "";
+
+  if (!quotedText && stanzaId && sess?.sentMessagesStore?.has(stanzaId)) {
+    quotedText = extractMessageText(sess.sentMessagesStore.get(stanzaId));
+  }
+
+  const matchedMeta = stanzaId ? sentQuestionMetaMap.get(stanzaId) : null;
+
+  if (!quotedText && !stanzaId && !participant && !remoteJid && !matchedMeta) {
+    return null;
+  }
+
+  const resolvedQuotedText = quotedText || matchedMeta?.messageText || "";
+  const resolvedAskId = matchedMeta?.askId || extractAskIdFromText(resolvedQuotedText) || null;
+
+  return {
+    stanzaId,
+    participant,
+    remoteJid,
+    quotedText: resolvedQuotedText,
+    askId: resolvedAskId,
+    pharmacyId: matchedMeta?.pharmacyId || null,
+    pharmacyPhone: matchedMeta?.pharmacyPhone || null,
+    medicine: matchedMeta?.medicine || null,
+  };
+}
+
+function getOrCreateSession(sessionId) {
+  const id = sanitizeSessionId(sessionId);
+  if (!id) throw new Error("اسم الجلسة غير صالح");
+  if (!sessionsMap.has(id)) {
+    sessionsMap.set(id, {
+      id,
+      authDir: getSessionDir(id),
+      sock: null,
+      status: "disconnected",
+      qrDataUrl: null,
+      pairingCode: null,
+      manualClose: false,
+      idleTimer: null,
+      sentByBotIds: new Set(),
+      sentMessagesStore: new Map(),
+      lastAskContext: null,
+      onConnectedCallbacks: [],
+    });
+  }
+  return sessionsMap.get(id);
+}
+
+function clearSessionTimer(sess) {
+  if (sess?.idleTimer) {
+    clearTimeout(sess.idleTimer);
+    sess.idleTimer = null;
+  }
+}
+
+function scheduleSessionCloseAfter15Min(sess) {
+  clearSessionTimer(sess);
+  sess.idleTimer = setTimeout(async () => {
+    console.log(`⏳ انتهت ربع ساعة بدون نشاط للجلسة [${sess.id}] -> إغلاق الجلسة...`);
+    await closeWhatsAppSession(sess.id);
+  }, SESSION_IDLE_TIMEOUT_MS);
+}
+
+async function closeWhatsAppSession(sessionId) {
+  const cleanId = sanitizeSessionId(sessionId);
+  const sess = sessionsMap.get(cleanId);
+  if (!sess) return;
+  clearSessionTimer(sess);
+  sess.manualClose = true;
+  if (sess.sock) {
+    try {
+      sess.sock.end(new Error("Session closed after idle timeout or manual close"));
+    } catch (_) {}
+    sess.sock = null;
+  }
+  sess.qrDataUrl = null;
+  sess.pairingCode = null;
+  sess.status = "closed";
+  console.log(`🔒 تم إغلاق جلسة الصيدلية [${sess.id}]`);
+}
+
+function waitUntilReady(sess, timeoutMs = 15000) {
+  const isReady = () => Boolean(sess && sess.sock && sess.status === "connected");
+
+  if (isReady()) {
+    return Promise.resolve(sess);
+  }
+
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      clearInterval(interval);
+      reject(new Error(`الجلسة [${sess.id}] غير متصلة حالياً (الحالة: ${sess.status})`));
+    }, timeoutMs);
+
+    const interval = setInterval(() => {
+      if (isReady()) {
+        clearTimeout(timer);
+        clearInterval(interval);
+        resolve(sess);
+      }
+    }, 150);
+
+    sess.onConnectedCallbacks.push(() => {
+      clearTimeout(timer);
+      clearInterval(interval);
+      resolve(sess);
+    });
+  });
+}
+
+
+function extractAskIdFromText(text) {
+  const str = String(text || "");
+  const m = str.match(/\(ID:\s*([a-zA-Z0-9_-]+)\)/i) || str.match(/ID:\s*([a-zA-Z0-9_-]+)/i);
+  return m ? m[1].trim() : null;
+}
+
+function parseReplyStatus(replyText) {
+  const normalized = String(replyText || "").trim().toLowerCase();
+  if (
+    normalized.includes("غير متوفر") ||
+    normalized === "لا" ||
+    normalized.includes("ما متوفر") ||
+    normalized.includes("خالص") ||
+    normalized.includes("unavailable") ||
+    normalized === "no"
+  ) {
+    return "غير متوفر";
+  }
+  if (
+    normalized.includes("متوفر") ||
+    normalized === "نعم" ||
+    normalized.includes("موجود") ||
+    normalized.includes("available") ||
+    normalized === "yes"
+  ) {
+    return "متوفر";
+  }
+  return replyText.trim();
+}
+
+async function handleIncomingPharmacySelfReply(sess, msg) {
+  const remoteJid = msg.key?.remoteJid || "";
+  const msgId = msg.key?.id || String(Date.now());
+  const text = extractMessageText(msg.message);
+  if (!text || !remoteJid) return;
+
+  if (msg.key?.id && msg.message) {
+    sess.sentMessagesStore.set(msg.key.id, msg.message);
+    if (sess.sentMessagesStore.size > 300) {
+      const firstKey = sess.sentMessagesStore.keys().next().value;
+      sess.sentMessagesStore.delete(firstKey);
+    }
+  }
+
+  if (sess.sentByBotIds.has(msgId)) return;
+  if (!isSelfChatJid(sess, remoteJid)) return;
+
+  scheduleSessionCloseAfter15Min(sess);
+
+  const quotedMessageData = extractQuotedMessageData(msg.message, sess);
+  const { ownPhone } = getOwnIdentifiers(sess);
+  const pharmacyPhone =
+    quotedMessageData?.pharmacyPhone ||
+    sess.lastAskContext?.pharmacyPhone ||
+    normalizeSudanPhone(ownPhone) ||
+    cleanPhone(ownPhone);
+
+  // إذا وُجد تاغ/اقتباس لسؤال محدد نعتمد askId الخاص به حصراً، وإلا نرجع لآخر استعلام
+  const hasQuotedTarget = Boolean(quotedMessageData && (quotedMessageData.stanzaId || quotedMessageData.quotedText || quotedMessageData.askId));
+  const askId = hasQuotedTarget
+    ? (quotedMessageData.askId || null)
+    : (sess.lastAskContext?.askId || null);
+
+  if (!askId) {
+    console.warn("⚠️ تعذر تحديد السؤال المستهدف للرد (تأكد من التاغ على رسالة السؤال).");
+    return;
+  }
+  const pharmacyId =
+    quotedMessageData?.pharmacyId ||
+    sess.lastAskContext?.pharmacyId ||
+    pharmacyPhone ||
+    sess.id;
+
+  if (!askId || !db) return;
+
+  try {
+    const askDocRef = db.collection("AskPharmacy").doc(askId);
+    const askDoc = await askDocRef.get();
+    if (!askDoc.exists) return;
+
+    const askData = askDoc.data();
+    const statusLabel = parseReplyStatus(text);
+    const responses = Array.isArray(askData.responses) ? [...askData.responses] : [];
+
+    const replyRecord = {
+      sessionId: sess.id,
+      pharmacyId,
+      pharmacyPhone,
+      senderJid: remoteJid,
+      senderPhone: pharmacyPhone,
+      status: statusLabel,
+      rawReplyText: text,
+      isQuotedReply: Boolean(quotedMessageData),
+      quotedMessageData: quotedMessageData || null,
+      respondedAt: new Date().toISOString(),
+    };
+
+    const existingIdx = responses.findIndex(
+      (r) =>
+        r &&
+        (r.pharmacyId === pharmacyId ||
+          r.sessionId === sess.id ||
+          (pharmacyPhone && phonesMatch(r.pharmacyPhone || r.senderPhone, pharmacyPhone)))
+    );
+
+    if (existingIdx >= 0) {
+      responses[existingIdx] = replyRecord;
+    } else {
+      responses.push(replyRecord);
+    }
+
+    const availableCount = responses.filter((r) => r.status === "متوفر").length;
+    const finalStatus = availableCount > 0 ? "متوفر" : "غير متوفر";
+
+    await askDocRef.update({
+      responses,
+      Status: finalStatus,
+      lastReplyText: text,
+      lastQuotedMessageData: quotedMessageData || null,
+      updatedAt: new Date().toISOString(),
+    });
+
+    console.log(
+      `💾 [${sess.id}] حفظ رد الصيدلية [${pharmacyPhone || pharmacyId}] على نفسها للاستعلام [${askId}] -> الحالة: ${statusLabel}`
+    );
+  } catch (err) {
+    console.error("🔥 خطأ أثناء حفظ رد الصيدلية في Firestore:", err);
+  }
+}
+
+async function startWhatsAppSession(sessionId) {
+  const sess = getOrCreateSession(sessionId);
+  sess.manualClose = false;
+  scheduleSessionCloseAfter15Min(sess);
+
+  if (sess.sock && sess.status === "connected") {
+    return sess;
+  }
+
+  if (!fs.existsSync(sess.authDir)) {
+    fs.mkdirSync(sess.authDir, { recursive: true });
+  }
+
+  const { state, saveCreds } = await useMultiFileAuthState(sess.authDir);
+  const { version } = await fetchLatestBaileysVersion();
+
+  const sock = makeWASocket({
+    version,
+    auth: state,
+    logger: pino({ level: "silent" }),
+    printQRInTerminal: false,
+    getMessage: async (key) => {
+      if (!key?.id) return undefined;
+      return sess.sentMessagesStore.get(key.id);
+    },
+  });
+
+  sess.sock = sock;
+  sock.ev.on("creds.update", saveCreds);
+
+  sock.ev.on("connection.update", async (update) => {
+    const { connection, lastDisconnect, qr } = update;
+
+    if (qr) {
+      sess.status = "qr";
+      sess.qrDataUrl = await QRCode.toDataURL(qr);
+    }
+
+    if (connection === "open") {
+      sess.status = "connected";
+      sess.qrDataUrl = null;
+      sess.pairingCode = null;
+      scheduleSessionCloseAfter15Min(sess);
+      const { ownPhone, ownLid } = getOwnIdentifiers(sess);
+      console.log(`✅ جلسة الصيدلية [${sess.id}] متصلة | الرقم: ${ownPhone || "-"} | LID: ${ownLid || "-"}`);
+      const cbs = sess.onConnectedCallbacks.splice(0);
+      cbs.forEach((cb) => cb(sess));
+    }
+
+    if (connection === "close") {
+      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      sess.sock = null;
+      sess.qrDataUrl = null;
+
+      if (sess.manualClose) {
+        clearSessionTimer(sess);
+        sess.status = "closed";
+        return;
+      }
+
+      sess.status = "disconnected";
+      if (statusCode !== DisconnectReason.loggedOut) {
+        setTimeout(() => {
+          if (!sess.manualClose) startWhatsAppSession(sess.id);
+        }, 1500);
+      }
+    }
+  });
+
+  sock.ev.on("messages.upsert", async ({ messages }) => {
+    for (const msg of messages) {
+      if (!msg.message) continue;
+      await handleIncomingPharmacySelfReply(sess, msg);
+    }
+  });
+
+  return sess;
+}
+
+async function buildPharmacySessionStatuses() {
+  const savedEntries = listSavedSessionEntries();
+  let pharmaciesList = [];
+  if (db) {
+    try {
+      const phSnap = await db.collection("pharmacies").get();
+      pharmaciesList = phSnap.docs.map((doc) => ({ id: doc.id, data: doc.data() || {} }));
+    } catch (_) {}
+  }
+
+  return pharmaciesList.map((ph) => {
+    const d = ph.data || {};
+    const matchedEntry = findMatchingSessionEntryForPharmacy(ph.id, d, savedEntries);
+    const hasSavedSession = Boolean(matchedEntry);
+    const liveSess = matchedEntry ? sessionsMap.get(matchedEntry.sessionId) : null;
+    const sessionStatus = !hasSavedSession
+      ? "no_session"
+      : liveSess
+      ? liveSess.status
+      : "saved";
+    const isWhatsappConnected = Boolean(
+      hasSavedSession && liveSess && liveSess.status === "connected" && liveSess.sock
+    );
+
+    const autoStatus = !hasSavedSession
+      ? "غير متصل"
+      : sessionStatus === "closed"
+      ? "متوقف"
+      : !isWhatsappConnected
+      ? "غير متصل"
+      : null;
+
+    return {
+      pharmacyId: ph.id,
+      phone: d.phone || ph.id,
+      sessionId: matchedEntry ? matchedEntry.sessionId : null,
+      hasSavedSession,
+      sessionStatus,
+      isWhatsappConnected,
+      autoStatus,
+    };
+  });
+}
+
+app.get("/api/pharmacy-sessions", async (req, res) => {
+  try {
+    const statuses = await buildPharmacySessionStatuses();
+    res.json({ ok: true, pharmacies: statuses });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post("/api/session/add", async (req, res) => {
+  try {
+    const rawSessionId = req.body?.sessionId;
+    const rawPhone = req.body?.phone;
+    const cleanId = sanitizeSessionId(rawSessionId || cleanPhone(rawPhone));
+
+    if (!cleanId) {
+      return res.status(400).json({ ok: false, error: "أدخل اسم/معرّف الجلسة الجديدة" });
+    }
+
+    const sess = await startWhatsAppSession(cleanId);
+    let code = sess.pairingCode || null;
+
+    if (rawPhone) {
+      const normalizedNum = normalizeSudanPhone(rawPhone) || cleanPhone(rawPhone);
+      if (normalizedNum && normalizedNum.length >= 8 && !sess.sock?.authState?.creds?.registered) {
+        await new Promise((r) => setTimeout(r, 800));
+        if (sess.sock && typeof sess.sock.requestPairingCode === "function") {
+          code = await sess.sock.requestPairingCode(normalizedNum);
+          sess.pairingCode = code;
+        }
+      }
+    }
+
+    res.json({
+      ok: true,
+      sessionId: sess.id,
+      status: sess.status,
+      code,
+      qr: sess.qrDataUrl,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post("/api/pair", async (req, res) => {
+  try {
+    const cleanId = sanitizeSessionId(req.body?.sessionId);
+    const num = normalizeSudanPhone(req.body?.phone) || cleanPhone(req.body?.phone);
+
+    if (!cleanId) {
+      return res.status(400).json({ ok: false, error: "أدخل اسم الجلسة أولاً" });
+    }
+    if (!num || num.length < 8) {
+      return res.status(400).json({ ok: false, error: "أدخل رقم الهاتف مع كود الدولة بشكل صحيح" });
+    }
+
+    const sess = getOrCreateSession(cleanId);
+    if (!sess.sock) {
+      await startWhatsAppSession(cleanId);
+      await new Promise((r) => setTimeout(r, 800));
+    }
+
+    if (!sess.sock) {
+      return res.status(400).json({ ok: false, error: "السوكيت لم يجهز بعد" });
+    }
+
+    if (sess.sock.authState?.creds?.registered) {
+      return res.status(400).json({ ok: false, error: "هذه الجلسة مربوطة مسبقاً" });
+    }
+
+    const code = await sess.sock.requestPairingCode(num);
+    sess.pairingCode = code;
+    res.json({ ok: true, sessionId: sess.id, code });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post("/api/session/start", async (req, res) => {
+  try {
+    const cleanId = sanitizeSessionId(req.body?.sessionId);
+    if (!cleanId) return res.status(400).json({ ok: false, error: "اسم الجلسة مطلوب" });
+    await startWhatsAppSession(cleanId);
+    res.json({ ok: true, sessionId: cleanId });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post("/api/session/close", async (req, res) => {
+  try {
+    const cleanId = sanitizeSessionId(req.body?.sessionId);
+    if (!cleanId) return res.status(400).json({ ok: false, error: "اسم الجلسة مطلوب" });
+    await closeWhatsAppSession(cleanId);
+    res.json({ ok: true, sessionId: cleanId });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get("/api/sessions", (req, res) => {
+  const folders = listAllSessionFolders();
+  const activeId = sanitizeSessionId(req.query.session) || folders[0] || "";
+  const currentSess = activeId && sessionsMap.has(activeId) ? sessionsMap.get(activeId) : null;
+  const { ownPhone, ownLid } = getOwnIdentifiers(currentSess);
+
+  const sessions = folders.map((id) => {
+    const dir = getSessionDir(id);
+    const hasCreds = fs.existsSync(path.join(dir, "creds.json"));
+    const s = sessionsMap.get(id);
+    const ids = getOwnIdentifiers(s);
+    return {
+      id,
+      hasCreds,
+      status: s ? s.status : hasCreds ? "saved" : "disconnected",
+      ownPhone: ids.ownPhone || "",
+      pairingCode: s?.pairingCode || null,
+      qr: s?.qrDataUrl || null,
+    };
+  });
+
+  res.json({
+    ok: true,
+    sessionId: activeId,
+    sessions,
+    status: currentSess ? currentSess.status : "disconnected",
+    ownPhone,
+    ownLid,
+    pairingCode: currentSess?.pairingCode || null,
+    qr: currentSess?.qrDataUrl || null,
+  });
+});
+
+async function handleAskPharmacy({ medicine, userPhone, askId, lat, lng, range }) {
+  const savedSessions = listSavedSessionEntries();
+  console.log("🔍 الجلسات المحفوظة المكتشفة:", savedSessions.map((s) => s.sessionId));
+
+  const isLocationAvailable = Boolean(lat && lng);
+  const searchRange = parseFloat(range) || 4;
+
+  let pharmaciesList = [];
+  if (db) {
+    try {
+      const phSnap = await db.collection("pharmacies").get();
+      pharmaciesList = phSnap.docs.map((doc) => ({ id: doc.id, data: doc.data() || {} }));
+    } catch (e) {
+      console.warn("⚠️ تعذر قراءة مجموعة pharmacies:", e.message);
+    }
+  }
+
+  let sentCount = 0;
+  let filteredCount = 0;
+
+  const sendJobs = savedSessions.map(async (entry) => {
+    const matchedPh = findMatchingPharmacyForSession(entry, pharmaciesList);
+    const phData = matchedPh?.data || {};
+    const phId = matchedPh?.id || entry.sessionId;
+
+    if (isLocationAvailable && matchedPh && phData.lat && phData.lng) {
+      const distKm = getDistanceInKm(lat, lng, phData.lat, phData.lng);
+      if (distKm > searchRange) {
+        filteredCount++;
+        console.log(`📏 [${entry.sessionId}] مستبعدة بالمسافة (${distKm.toFixed(1)} كم > ${searchRange} كم)`);
+        return;
+      }
+    }
+
+    try {
+      const sess = await startWhatsAppSession(entry.sessionId);
+      await waitUntilReady(sess, 15000);
+      scheduleSessionCloseAfter15Min(sess);
+
+      const targetSelfJid = resolveSelfTargetJid(sess, entry);
+      if (!targetSelfJid) {
+        console.warn(`⚠️ [${entry.sessionId}] لم يتم العثور على JID للنفس`);
+        return;
+      }
+
+      const { ownPhone } = getOwnIdentifiers(sess);
+      const resolvedPhone =
+        normalizeSudanPhone(phData.phone) ||
+        normalizeSudanPhone(ownPhone) ||
+        cleanPhone(ownPhone) ||
+        normalizeSudanPhone(entry.credPhone) ||
+        entry.credPhone ||
+        cleanPhone(entry.sessionId);
+
+      const messageText =
+        `💊 استعلام جديد:\nالدواء: ${medicine}\nمن المستخدم: ${userPhone || "عابر"}\n` +
+        `الصيدلية: ${phData.name || entry.sessionId} (${resolvedPhone || entry.sessionId})\n` +
+        `(ID: ${askId})\n` +
+        `رد على نفسك (Reply) واكتب: متوفر أو غير متوفر`;
+
+      sess.lastAskContext = {
+        askId,
+        pharmacyId: phId,
+        pharmacyPhone: resolvedPhone,
+        medicine,
+        userPhone: userPhone || "عابر",
+      };
+
+      const sentMsg = await sess.sock.sendMessage(targetSelfJid, { text: messageText });
+
+      if (sentMsg?.key?.id) {
+        sess.sentByBotIds.add(sentMsg.key.id);
+        if (sentMsg.message) {
+          sess.sentMessagesStore.set(sentMsg.key.id, sentMsg.message);
+        }
+        sentQuestionMetaMap.set(sentMsg.key.id, {
+          askId,
+          pharmacyId: phId,
+          pharmacyPhone: resolvedPhone,
+          medicine,
+          messageText,
+        });
+      }
+
+      scheduleSessionCloseAfter15Min(sess);
+      sentCount++;
+      console.log(`📤 [${entry.sessionId}] أرسل السؤال لنفسه (${targetSelfJid})`);
+    } catch (err) {
+      console.warn(`⚠️ [${entry.sessionId}] فشل الإرسال للجلسة:`, err.message);
+    }
+  });
+
+  await Promise.allSettled(sendJobs);
+  const pharmacySessionStatuses = await buildPharmacySessionStatuses();
+
+  console.log(
+    `✅ تم إرسال السؤال إلى ${sentCount} من أصل ${savedSessions.length} جلسة محفوظة. مستبعدة بالمسافة: ${filteredCount}`
+  );
+
+  return {
+    sentCount,
+    filteredCount,
+    sessionsCount: savedSessions.length,
+    pharmacySessionStatuses,
+  };
+}
+
+app.post("/api/ask", async (req, res) => {
+  try {
+    const { medicine, userPhone, askId, lat, lng, range } = req.body || {};
+    if (!medicine || !askId) {
+      return res.status(400).json({ ok: false, error: "اسم الدواء ومعرّف الاستعلام مطلوبان" });
+    }
+    const result = await handleAskPharmacy({
+      medicine,
+      userPhone: userPhone || "عابر",
+      askId,
+      lat,
+      lng,
+      range,
+    });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error("🚫 فشل إرسال السؤال للجلسات المحفوظة:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 السيرفر شغال من نفس المجلد على http://localhost:${PORT}`);
+  const saved = listSavedSessionEntries();
+  saved.forEach((entry) => {
+    startWhatsAppSession(entry.sessionId).catch((e) => console.error(e));
+  });
+});

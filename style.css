@@ -1,0 +1,357 @@
+/* ---------------------------------- */
+/* 1. Base & Typography */
+/* ---------------------------------- */
+:root {
+    --primary-color: #00bcd4; /* لون طبي (تركواز) */
+    --secondary-color: #007bff; /* أزرق */
+    --text-dark: #343a40;
+    --bg-light: #f8f9fa;
+    --status-available: #00a854;
+    --status-unavailable: #e63946;
+    --status-pending: #f7a01d;
+}
+
+body {
+    font-family: 'Cairo', sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 10px;
+    direction: rtl;
+    background: var(--bg-light);
+    color: var(--text-dark);
+}
+
+h4 { color: var(--text-dark); text-align: center; font-weight: 800; margin-top: 15px; margin-bottom: 25px; }
+
+/* ---------------------------------- */
+/* 2. Sidebars & Toggles */
+/* ---------------------------------- */
+.sidebar-toggle-button {
+    position: fixed;
+    top: 15px;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 25px;
+    cursor: pointer;
+    z-index: 1001;
+    font-size: 14px;
+    width: 130px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    transition: background 0.2s, transform 0.2s;
+    font-weight: 700;
+}
+
+.sidebar-toggle-button:hover { transform: translateY(-1px); }
+
+#sidebarToggle { right: 10px; background: var(--text-dark); }
+#infoSidebarToggle { left: 10px; background: var(--primary-color); }
+
+/* Sidebar General */
+#sidebar, #infoSidebar {
+    width: 0;
+    transition: 0.3s;
+    height: 100%;
+    position: fixed;
+    top: 0;
+    z-index: 1000;
+    padding-top: 60px;
+    overflow-y: auto;
+}
+
+#sidebar { right: 0; background-color: #343a40; border-left: 1px solid #555; }
+#sidebar .sidebar-header { color: #f1f1f1; font-size: 16px; padding: 10px 20px; border-bottom: 1px solid #555; display: flex; justify-content: space-between; align-items: center; }
+#sidebar .sidebar-header button { background: #ff4d4d; border: none; padding: 5px 10px; border-radius: 5px; color: white; cursor: pointer; font-size: 14px; }
+#sidebar a { padding: 12px 20px; font-size: 15px; color: #f1f1f1; display: block; transition: 0.2s; cursor: pointer; }
+#sidebar a:hover { background-color: #495057; }
+
+
+#infoSidebar { left: 0; background-color: var(--primary-color); border-right: 1px solid #555; color: white; }
+
+/* Info Sidebar Styling */
+#infoSidebar .info-content { padding: 20px; }
+#infoSidebar .info-content h3 { border-bottom: 2px solid white; padding-bottom: 10px; font-weight: 800; }
+#infoSidebar ul li { background: rgba(0, 0, 0, 0.1); padding: 10px; border-radius: 8px; font-weight: 400; margin-bottom: 10px;}
+#infoSidebar button { background:white; color:var(--primary-color); margin-top:20px; border-radius: 8px; font-weight: 700;}
+
+
+/* ---------------------------------- */
+/* 3. Search Bar & Range */
+/* ---------------------------------- */
+.search-container {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 12px 25px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 60px;
+}
+.search-input { width: 100%; max-width: 320px; padding: 12px 15px; font-size: 16px; border: 2px solid #ddd; border-radius: 10px; text-align: right; margin-bottom: 15px; transition: border-color 0.2s; }
+.search-input:focus { border-color: var(--primary-color); outline: none; }
+
+.range-selection {
+    display: flex; align-items: center; justify-content: center; margin-bottom: 15px; width: 100%; max-width: 320px;
+}
+.range-selection label { font-size: 14px; color: #555; white-space: nowrap; margin-left: 10px; }
+.range-select { padding: 8px 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; background-color: white; cursor: pointer; }
+
+/* Ask Button */
+button, #savePhoneButton { background: var(--status-available); color: white; border: none; padding: 12px 25px; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.2); width: 100%; max-width: 320px; }
+button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
+button:disabled { background: #9E9E9E; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ---------------------------------- */
+/* 4. Results & Pharmacy Cards */
+/* ---------------------------------- */
+#currentQueryTitle { font-size: 1.2em; color: var(--primary-color); text-align: center; margin-bottom: 20px; padding: 12px; background: #e6f7ff; border-radius: 10px; font-weight: 700; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+.pharmacy {
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    border-top: 5px solid transparent;
+    transition: all 0.3s;
+    background: white;
+}
+
+.status-available-border { border-top-color: var(--status-available); }
+.status-unavailable-border { border-top-color: var(--status-unavailable); }
+.status-pending-border { border-top-color: var(--status-pending); }
+
+.pharmacy:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+
+.pharmacy-info { flex-grow: 1; text-align: right; }
+.pharmacy-info strong { display: block; font-size: 1.3em; color: var(--text-dark); margin-bottom: 2px; font-weight: 700; }
+.pharmacy-info small { color: #6c757d; display: block; font-size: 0.9em; margin-bottom: 5px;}
+
+.status-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-weight: 700;
+    font-size: 1.0em;
+    padding: 6px 12px;
+    border-radius: 20px;
+    min-width: 110px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.status-available { background: #e6ffe6; color: var(--status-available); }
+.status-unavailable { background: #ffe6e6; color: var(--status-unavailable); }
+.status-pending { background: #fffbe6; color: var(--status-pending); }
+
+.pharmacy-map-link {
+    font-size: 13px;
+    color: var(--secondary-color);
+    text-decoration: none;
+    font-weight: 700;
+    padding: 5px 8px;
+    border: 1px solid var(--secondary-color);
+    border-radius: 5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 5px;
+}
+.pharmacy-map-link:hover { background: #e6f0ff; }
+
+.contact-buttons-container { display: flex; gap: 8px; margin-top: 10px; }
+.contact-buttons-container a {
+    text-decoration: none;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+.contact-call { background: var(--secondary-color); color: white; border: 1px solid var(--secondary-color); }
+.contact-whatsapp { background: #25D366; color: white; border: 1px solid #25D366; }
+.contact-call:hover { background: #0056b3; }
+.contact-whatsapp:hover { background: #1da851; }
+
+/* ---------------------------------- */
+/* 4.1. Delivery Badge - جديد */
+/* ---------------------------------- */
+.delivery-badge {
+    font-weight: bold;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 10px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    white-space: nowrap;
+}
+
+.delivery-available {
+    color: var(--status-available);
+    background: #e6fff0; /* أخضر فاتح جداً */
+    border: 1px solid var(--status-available);
+}
+
+.delivery-unavailable {
+    color: #6c757d; /* لون رمادي لعدم التوفر */
+    background: #f1f1f1; /* خلفية فاتحة */
+    border: 1px solid #ced4da; /* إطار رمادي */
+}
+/* ---------------------------------- */
+
+
+/* ---------------------------------- */
+/* 5. Modals & Errors (وإخفاء الواجهات) */
+/* ---------------------------------- */
+
+.hidden { display: none !important; }
+
+#locationErrorBox {
+    background: #fff3cd; color: #856404; padding: 15px; border: 1px solid #ffeeba; border-radius: 8px; margin-top: 20px; text-align: center; font-weight: 700;
+}
+#errorBox { background:#fbe5e5; color:#cc0000; padding:15px; border-radius:10px; margin-top:15px; white-space:pre-wrap; border: 1px solid #cc0000; font-size: 14px;}
+.loading { text-align: center; color: #555; padding: 10px; font-weight: 700; }
+#loading-screen {
+    position: fixed; /* لتغطية الشاشة بأكملها */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #f7f7f7; /* لون خلفية فاتح */
+    z-index: 9999; /* ليكون فوق كل العناصر الأخرى */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* توسيط عمودي */
+    align-items: center; /* توسيط أفقي */
+    opacity: 1;
+    transition: opacity 0.5s ease-out; /* لإخفاء ناعم */
+}
+
+#logo-img {
+    width: 120px; /* حجم الشعار */
+    height: auto;
+    margin-bottom: 15px;
+    /* يمكنك إضافة تأثير دوران بسيط هنا */
+}
+
+    #whatsapp-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: rgba(37, 211, 102, 0.85); /* أخضر WhatsApp باهت */
+        color: white;
+        text-align: center;
+        padding: 10px 0;
+        z-index: 1000;
+        font-weight: bold;
+        backdrop-filter: blur(2px); /* تأثير باهت إضافي */
+    }
+    #whatsapp-bar a {
+        color: white;
+        text-decoration: none;
+        display: block;
+    }
+                  /* ---------------------------------- */
+/* 5. Modals & Errors (إخفاء تلقائي) */
+/* ---------------------------------- */
+
+/* 💡 جديد: لأجل خاصية الإخفاء التلقائي للأخطاء (Error Auto-Hide) */
+.fade-out {
+    opacity: 0;
+    transition: opacity 1s ease-out; /* مدة التلاشي */
+}
+/* ---------------------------------- */
+/* 2. Form & Container Styles (Add Pharmacy Page) */
+/* ---------------------------------- */
+.form-container {
+    max-width: 700px;
+    margin: 40px auto;
+    padding: 25px;
+    background: #fff;
+    border-radius: 15px;
+    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+}
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; font-weight: 700; margin-bottom: 8px; color: var(--text-dark); }
+/* تعيين اتجاه النص لمدخلات النموذج */
+.form-group input, .form-group textarea {
+    width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; text-align: right; font-family: 'Cairo', sans-serif;
+}
+.form-group textarea { resize: vertical; }
+.required-note { font-size: 0.85em; color: #e63946; margin-top: 5px; }
+
+/* ---------------------------------- */
+/* 3. Button Styles (Add Pharmacy Page) */
+/* ---------------------------------- */
+/* زيادة عرض زر الإرسال وجعله مرناً */
+.form-container button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* إعادة تعريف للتأكد من المظهر المحدد لهذه الصفحة */
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    transition: background 0.3s;
+}
+.form-container button:hover { background: #0097a7; }
+.form-container button:disabled { background: #ccc; cursor: not-allowed; }
+
+/* ---------------------------------- */
+/* 4. Map & Guide Styles (Add Pharmacy Page) */
+/* ---------------------------------- */
+#map {
+    height: 300px; /* تحديد الارتفاع - أساسي لظهور الخريطة */
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    z-index: 0;
+}
+.map-controls button { margin-bottom: 10px; }
+
+.telegram-guide {
+    border: 2px solid var(--secondary-color);
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 30px;
+    background: #f0f8ff;
+}
+
+/* ---------------------------------- */
+/* 5. Messages & Hidden (Add Pharmacy Page) */
+/* ---------------------------------- */
+
+/* تنسيق رسالة النجاح (مكررة ولكن للتأكد من المظهر المحدد) */
+.success { background: #e6ffe6; color: #00a854; padding:15px; border-radius:10px; margin-top:15px; white-space:pre-wrap; border: 1px solid #00a854; font-size: 14px;}
+
+/* تنسيق رسالة GPS الجديدة */
+#gpsMessageBox {
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+}
+.gps-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.gps-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الرئيسية - اسأل الصيدلية</title>
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#00bcd4"/>
+</head>
+<body>
+    <div id="loading-screen">
+    <img src="images/daway_sudan_logo.png" alt="الشعار" id="logo-img">
+    <p>انتظر من فضلك...</p>
+</div>
+
+<button id="installAppBtn" style="
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  background-color: #00bcd4;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 25px;
+  font-family: 'Cairo', sans-serif;
+  font-size: 16px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  cursor: pointer;
+  display: none;
+  z-index: 9999;
+">
+📱 تثبيت التطبيق
+</button>
+<button id="sidebarToggle" class="sidebar-toggle-button" onclick="toggleSidebar()">☰ سجل الأسئلة</button>
+<button id="infoSidebarToggle" class="sidebar-toggle-button" onclick="toggleInfoSidebar()">💡عن التطبيق؟</button>
+
+<div id="sidebar">
+    <div class="sidebar-header">
+        <span id="sessionInfo" style="font-weight: 700;"></span>
+        <button onclick="logout()" style="background: #ff4d4d; border-radius: 5px; width: 100px; padding: 5px;">خروج</button>
+    </div>
+
+    <a href="profile.html" style="font-weight: bold; background: #495057; color: white;">⚙️ تعديل الملف الشخصي والموقع</a>
+
+    <div id="previousQuestionsContainer"></div>
+</div>
+
+<div id="infoSidebar">
+    <div class="info-content">
+        <h3>🚀 ابحث بذكاء عن دوائك</h3>
+        <p style="font-size:1.0em; font-weight: 400;">وداعًا للبحث الطويل! تطبيق **"اسأل الصيدلية"** بوابتك الفورية للعثور على أدويتك بسهولة وذكاء.</p>
+        <ul>
+            <li><strong>الأقرب والأسرع:</strong> نرسل استعلامك للصيدليات ضمن مسافة (حسب اختيارك).</li>
+            <li><strong>مقارنة فورية:</strong> شاهد حالة توفر الدواء (متوفر/غير متوفر) والمسافة الدقيقة.</li>
+            <li><strong>توفير الجهد:</strong> احصل على ردود سريعة وموثوقة دون الحاجة للتنقل.</li>
+        </ul>
+        <button onclick="closeInfoSidebar()">ابدأ البحث الآن</button>
+
+    </div><a href="addph.html" style="
+    display: block;
+    margin-top: 30px;
+    padding: 10px;
+    background: #007bff;
+    color: white;
+    text-align: center;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1em;
+">
+    💊 أنا صيدلي! إضافة صيدلية أو تعديلها
+</a>  <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px;">
+        <h5 style="font-weight: 700;">للتواصل مع المبرمج:</h5>
+        <a href="https://wa.me/09128514785" target="_blank" class="contact-whatsapp" style="display: block; text-align: center; margin-top: 10px; padding: 10px; border-radius: 8px;">
+            <i data-lucide="whatsapp" style="margin-left: 5px; vertical-align: middle;"></i>
+            09128514785 (WhatsApp)
+        </a>
+    </div>
+    <a  style="
+    display: block;
+    margin-top: 30px;
+    padding: 10px;
+    background: #007bff;
+    color: white;
+    text-align: center;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1em;
+">
+</a>
+</div>
+
+<div class="search-container">
+    <h5>✅ ابحث بذكاء عن دوائك في محيطك الجغرافي</h5>
+    <div class="range-selection">
+        <label for="searchRange">نطاق البحث (كم):</label>
+        <select id="searchRange" class="range-select">
+            <option value="1">1 كم</option>
+            <option value="2">2 كم</option>
+            <option value="3">3 كم</option>
+            <option value="4" selected>4 كم (افتراضي)</option>
+            <option value="5">5 كم</option>
+            <option value="6">6 كم</option>
+            <option value="7">7 كم</option>
+            <option value="8">8 كم</option>
+            <option value="9">9 كم</option>
+            <option value="10">10 كم</option>
+            <option value="11">11 كم</option>
+            <option value="12">12 كم</option>
+            <option value="13">13 كم</option>
+        </select>
+    </div>
+    <input type="text" id="medicineInput" class="search-input" placeholder="اكتب اسم الدواء هنا">
+    <button id="askButton" onclick="checkPreviousQuestionAndAsk()">اسأل الصيدليات</button>
+
+    <p id="locationSourceIndicator" class="hidden" style="font-size: 13px; color: #555; margin-top: 10px; background-color: #f0f0f0; padding: 5px 10px; border-radius: 5px;"></p>
+
+
+</div>
+                     <div id="errorBox" class="hidden"></div>
+<div id="currentQueryTitle" class="hidden"></div>
+
+<div id="locationErrorBox" class="hidden">
+    ⚠️ **تعذر تحديد موقعك الحالي.** <br>
+    **لن يتم إرسال الاستعلام بشكل صحيح.** <br>
+    الرجاء **تفعيل خدمة الموقع (GPS)** ومنح الأذونات اللازمة.
+</div>
+
+<div id="pharmaciesContainer">
+    <div class="loading">لظهور النتائج للصيدليات القريبة اسال الصيدليات...</div>
+</div>
+
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script src="script.js"></script>
+
+<script>
+  let deferredPrompt;
+const installBtn = document.getElementById('installAppBtn');
+
+// التقاط الحدث قبل التثبيت
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBtn.style.display = 'block'; // إظهار الزر
+});
+
+// عند الضغط على الزر
+installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+
+  deferredPrompt.prompt(); // عرض مربع التثبيت الرسمي من المتصفح
+
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') {
+    console.log('✅ المستخدم وافق على التثبيت');
+  } else {
+    console.log('❌ المستخدم رفض التثبيت');
+  }
+  installBtn.style.display = 'none';
+  deferredPrompt = null;
+});
+
+// عند تثبيت التطبيق فعلياً
+window.addEventListener('appinstalled', () => {
+  console.log('🎉 تم تثبيت تطبيق دواي السودان!');
+  installBtn.style.display = 'none';
+});
+
+
+    // وظيفة تحقق فورية عند تحميل الصفحة
+    window.onload = async function() {
+        if(!localStorage.getItem('userPhone')){
+            // إذا لم يكن مسجل الدخول، توجيهه إلى صفحة الدخول
+            window.location.href = 'login.html';
+            return;
+        }
+
+        const phone = localStorage.getItem('userPhone');
+
+        // إجراءات التحميل للصفحة الرئيسية
+        try {
+            await getUserLocation();
+            showSessionInfo(phone);
+            await renderPreviousQuestions();
+
+            syncResponses();
+            lucide.createIcons();
+
+        } catch(e) { showError("خطأ أثناء تحميل الصفحة الرئيسية", e); }
+    };
+
+window.addEventListener('load', function() {
+    const loadingScreen = document.getElementById('loading-screen');
+
+    // 1. بدء إخفاء الطبقة بتأثير التلاشي (Fade Out)
+    loadingScreen.style.opacity = '0';
+
+    // 2. إخفاء الطبقة بالكامل بعد انتهاء تأثير التلاشي (0.5 ثانية)
+    setTimeout(function() {
+        loadingScreen.style.display = 'none';
+    }, 500);
+});
+</script>
+</body>
+</html>

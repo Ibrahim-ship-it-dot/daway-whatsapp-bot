@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ملفي الشخصي - اسأل الصيدلية</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+:root {
+    --primary-color: #00bcd4;
+    --secondary-color: #007bff;
+    --bg-light: #f8f9fa;
+    --dark-text: #343a40;
+    --shadow-light: 0 4px 12px rgba(0,0,0,0.08);
+}
+body {
+    padding: 0;
+    margin: 0;
+    font-family: 'Cairo', sans-serif;
+    background: var(--bg-light);
+    color: var(--dark-text);
+    min-height: 100vh;
+}
+a {
+    text-decoration: none;
+    color: var(--secondary-color);
+    transition: color 0.3s;
+}
+a:hover {
+    color: var(--primary-color);
+}
+.sidebar-toggle-button {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1050;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    box-shadow: var(--shadow-light);
+    transition: background 0.3s;
+}
+#infoSidebarToggle {
+    right: auto;
+    left: 10px;
+    background: #28a745;
+}
+#sidebar, #infoSidebar {
+    height: 100%;
+    width: 0;
+    position: fixed;
+    z-index: 1000;
+    top: 0;
+    background-color: #343a40;
+    overflow-x: hidden;
+    transition: 0.4s;
+    padding-top: 60px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+    direction: rtl;
+}
+#sidebar { right: 0; }
+#infoSidebar { left: 0; }
+#sidebar a, #infoSidebar a {
+    padding: 14px 15px 14px 24px;
+    text-decoration: none;
+    font-size: 1.05em;
+    color: #f1f1f1;
+    display: block;
+    transition: 0.3s;
+}
+#sidebar a:hover, #infoSidebar a:hover {
+    color: var(--primary-color);
+    background-color: #495057;
+}
+.sidebar-header {
+    padding: 10px 15px;
+    text-align: center;
+    color: white;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #495057;
+}
+#sidebar a[href="index.html"] {
+    background: var(--secondary-color) !important;
+    color: white !important;
+    margin: 10px;
+    border-radius: 8px;
+}
+.info-content {
+    padding: 15px;
+    color: #f1f1f1;
+}
+.info-content h3 { color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; }
+.info-content ul { padding-right: 20px; }
+.info-content li { margin-bottom: 8px; }
+.contact-whatsapp {
+    background: #25d366;
+    color: white !important;
+    font-weight: 700;
+}
+.profile-container {
+    max-width: 620px;
+    margin: 76px auto 24px auto;
+    padding: 24px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: var(--shadow-light);
+}
+@media (max-width: 768px) {
+    .profile-container {
+        margin-top: 58px;
+        padding: 16px;
+        border-radius: 0;
+        max-width: 100%;
+    }
+    .sidebar-toggle-button {
+        top: 6px;
+        padding: 8px 12px;
+        font-size: 0.9em;
+    }
+}
+.profile-container h3 {
+    text-align: center;
+    color: var(--primary-color);
+    margin: 0 0 20px 0;
+    font-size: 1.7em;
+}
+.profile-container h4 {
+    color: var(--dark-text);
+    font-weight: 800;
+    border-right: 4px solid var(--primary-color);
+    padding-right: 10px;
+    margin-top: 24px;
+    margin-bottom: 8px;
+}
+.phone-pill {
+    background: #e0f7fa;
+    border: 1px solid #80deea;
+    color: #006064;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.input-group {
+    margin-bottom: 16px;
+}
+.input-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 700;
+    color: #555;
+}
+.input-group input {
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    box-sizing: border-box;
+    font-family: 'Cairo', sans-serif;
+    font-size: 1em;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+.input-group input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 5px rgba(0, 188, 212, 0.3);
+    outline: none;
+}
+.location-inputs {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.location-inputs > div {
+    flex: 1 1 45%;
+    min-width: 140px;
+}
+#map {
+    height: 330px;
+    width: 100%;
+    border-radius: 10px;
+    margin-top: 12px;
+    border: 2px solid var(--primary-color);
+    z-index: 1;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+.button-group {
+    margin-top: 22px;
+    display: flex;
+    gap: 12px;
+    flex-direction: column;
+}
+.button-group button {
+    flex: 1;
+    padding: 13px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-weight: 800;
+    color: white;
+    background: var(--primary-color);
+    font-size: 1.05em;
+    font-family: 'Cairo', sans-serif;
+    transition: background 0.3s, transform 0.1s;
+}
+.button-group button:hover {
+    background: #008c9e;
+}
+.button-group button:active {
+    transform: scale(0.99);
+}
+.button-group button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+</style>
+</head>
+<body>
+
+<button id="sidebarToggle" class="sidebar-toggle-button" onclick="toggleSidebar()">☰ القائـــمة</button>
+<button id="infoSidebarToggle" class="sidebar-toggle-button" onclick="toggleInfoSidebar()">💡عن التطبيق؟</button>
+
+<div id="sidebar">
+    <div class="sidebar-header">
+        <span id="sessionInfo" style="font-weight: 700; font-size: 1.05em; display:block;"></span>
+        <button onclick="logout()" style="background: #ff4d4d; color:#fff; border:none; border-radius: 5px; width: 100px; padding: 7px; margin-top: 10px; font-weight: 700; cursor:pointer;">خروج</button>
+    </div>
+    <a href="index.html">صفحة الاستعلام عن دواء</a>
+    <a href="history.html">الأسئلة السابقة</a>
+    <a href="daway.html">تحميل تطبيق دواي السودان</a>
+    <div id="previousQuestionsContainer"></div>
+</div>
+
+<div id="infoSidebar">
+    <div class="info-content">
+        <h3>🚀 ابحث بذكاء عن دوائك</h3>
+        <p style="font-size:1.0em; font-weight: 400;">وداعًا للبحث الطويل! تطبيق **"اسأل الصيدلية"** بوابتك الفورية للعثور على أدويتك بسهولة وذكاء.</p>
+        <ul>
+            <li><strong>الأقرب والأسرع:</strong> نرسل استعلامك للصيدليات ضمن مسافة (حسب اختيارك).</li>
+            <li><strong>مقارنة فورية:</strong> شاهد حالة توفر الدواء (متوفر/غير متوفر) والمسافة الدقيقة.</li>
+            <li><strong>توفير الجهد:</strong> احصل على ردود سريعة وموثوقة دون الحاجة للتنقل.</li>
+        </ul>
+    </div>
+    <a href="index.html" style="
+        display: block;
+        margin: 15px;
+        padding: 10px;
+        background: #007bff;
+        color: white;
+        text-align: center;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 1.05em;
+    ">
+        💊 جرب البحـــث عن دواء
+    </a>
+    <div style="margin: 15px; border-top: 1px solid #495057; padding-top: 15px;">
+        <h5 style="font-weight: 700; color: #f1f1f1;">للتواصل مع المبرمج:</h5>
+        <a href="https://wa.me/09128514785" target="_blank" class="contact-whatsapp" style="display: block; text-align: center; margin-top: 10px; padding: 10px; border-radius: 8px;">
+            <i data-lucide="message-circle" style="margin-left: 5px; vertical-align: middle;"></i>
+            09128514785 (WhatsApp)
+        </a>
+    </div>
+</div>
+
+<div class="profile-container">
+    <h3>ملفي الشخصي</h3>
+
+    <div class="phone-pill">
+        <span>📱 رقم الهاتف المسجل:</span>
+        <strong id="displayPhoneBadge">غير محدد</strong>
+    </div>
+
+    <div class="input-group">
+        <label for="userName">الاسم الكامل</label>
+        <input type="text" id="userName" autocomplete="name" placeholder="اكتب اسمك هنا">
+    </div>
+
+    <hr style="margin: 20px 0; border:none; border-top:1px solid #eee;">
+
+    <h4>📍 تعديل الموقع الجغرافي (يدوياً أو تلقائياً)</h4>
+    <p style="color: #666; font-size: 13.5px; margin-top:4px;">يمكنك استخدام الـ GPS تلقائياً، أو النقر/سحب العلامة على الخريطة، أو إدخال الإحداثيات يدوياً.</p>
+
+    <div class="input-group location-inputs">
+        <div>
+            <label for="latInput">خط العرض (Lat)</label>
+            <input type="number" step="any" id="latInput" autocomplete="off" placeholder="مثال: 15.5007">
+        </div>
+        <div>
+            <label for="lngInput">خط الطول (Lng)</label>
+            <input type="number" step="any" id="lngInput" autocomplete="off" placeholder="مثال: 32.5599">
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="button-group">
+        <button id="gpsBtn" type="button" onclick="detectAndUseGPS()" style="background: var(--secondary-color);">🛰️ تحديد الموقع تلقائياً (GPS)</button>
+        <button id="saveProfileButton" type="button" onclick="saveProfile()">💾 حفظ التغييرات</button>
+    </div>
+    <a href="index.html" style="display: block; text-align: center; margin-top: 16px; font-weight: bold;">العودة للرئيسية</a>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const rawPhone = String(localStorage.getItem('userPhone') || '').trim();
+    const userPhone = rawPhone.replace(/\D/g, '');
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDlEBzVFhJzFkDI4mWnTSEQbUGOYBoVvbI",
+        authDomain: "group-2f790.firebaseapp.com",
+        projectId: "group-2f790",
+        storageBucket: "group-2f790.firebasestorage.app",
+        messagingSenderId: "532610990999",
+        appId: "1:532610990999:web:1ad2bf5149c68774e57ad2"
+    };
+
+    let app, db, auth;
+
+    const userNameInput = document.getElementById('userName');
+    const latInput = document.getElementById('latInput');
+    const lngInput = document.getElementById('lngInput');
+    const sessionInfoElement = document.getElementById('sessionInfo');
+    const displayPhoneBadge = document.getElementById('displayPhoneBadge');
+
+    if (displayPhoneBadge) {
+        displayPhoneBadge.textContent = userPhone || 'غير محدد';
+    }
+    if (sessionInfoElement) {
+        sessionInfoElement.textContent = `مرحباً، ${userPhone || 'زائر'}`;
+    }
+
+    const defaultCoords = { lat: 15.5007, lng: 32.5599 };
+    const map = L.map('map', { zoomControl: true }).setView([defaultCoords.lat, defaultCoords.lng], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+    }).addTo(map);
+
+    const marker = L.marker([defaultCoords.lat, defaultCoords.lng], { draggable: true, autoPan: true }).addTo(map);
+
+    function setCoordsAndMarker(lat, lng, shouldPan = true) {
+        const parsedLat = parseFloat(lat);
+        const parsedLng = parseFloat(lng);
+        if (isNaN(parsedLat) || isNaN(parsedLng)) return;
+        const newLatLng = [parsedLat, parsedLng];
+        marker.setLatLng(newLatLng);
+        if (shouldPan) {
+            map.panTo(newLatLng);
+        }
+    }
+
+    marker.on('dragend', function() {
+        const pos = marker.getLatLng();
+        latInput.value = pos.lat.toFixed(6);
+        lngInput.value = pos.lng.toFixed(6);
+    });
+
+    map.on('click', function(e) {
+        if (!e || !e.latlng) return;
+        latInput.value = e.latlng.lat.toFixed(6);
+        lngInput.value = e.latlng.lng.toFixed(6);
+        setCoordsAndMarker(e.latlng.lat, e.latlng.lng, true);
+    });
+
+    function updateMapFromInputs() {
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(lngInput.value);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            setCoordsAndMarker(lat, lng, true);
+        }
+    }
+    latInput.addEventListener('input', updateMapFromInputs);
+    lngInput.addEventListener('input', updateMapFromInputs);
+
+    async function initializeFirebase() {
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+
+        try {
+            await setPersistence(auth, browserSessionPersistence);
+        } catch (_) {}
+
+        return new Promise((resolve) => {
+            const timeoutId = setTimeout(resolve, 4000);
+            const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                clearTimeout(timeoutId);
+                if (!user) {
+                    try { await signInAnonymously(auth); } catch (_) {}
+                }
+                unsubscribe();
+                resolve();
+            });
+        });
+    }
+
+    function getUserProfileRef() {
+        if (!userPhone || !db) return null;
+        return doc(db, 'Users', userPhone);
+    }
+
+    async function loadUserData() {
+        const savedLat = localStorage.getItem('userLat');
+        const savedLng = localStorage.getItem('userLng');
+        const savedName = localStorage.getItem('userName');
+
+        if (savedName && !userNameInput.value) {
+            userNameInput.value = savedName;
+        }
+        if (savedLat && savedLng) {
+            latInput.value = parseFloat(savedLat).toFixed(6);
+            lngInput.value = parseFloat(savedLng).toFixed(6);
+            setCoordsAndMarker(savedLat, savedLng, true);
+        } else {
+            latInput.value = defaultCoords.lat.toFixed(6);
+            lngInput.value = defaultCoords.lng.toFixed(6);
+            setCoordsAndMarker(defaultCoords.lat, defaultCoords.lng, true);
+        }
+
+        const userRef = getUserProfileRef();
+        if (!userRef) return;
+
+        try {
+            const docSnap = await getDoc(userRef);
+            if (docSnap.exists()) {
+                const data = docSnap.data() || {};
+                if (data.name) userNameInput.value = data.name;
+                if (data.lat !== undefined && data.lng !== undefined) {
+                    const fLat = parseFloat(data.lat);
+                    const fLng = parseFloat(data.lng);
+                    if (!isNaN(fLat) && !isNaN(fLng)) {
+                        latInput.value = fLat.toFixed(6);
+                        lngInput.value = fLng.toFixed(6);
+                        setCoordsAndMarker(fLat, fLng, true);
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn("Firestore load warning:", err);
+        }
+    }
+
+    window.saveProfile = async function() {
+        const name = String(userNameInput.value || '').trim();
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(lngInput.value);
+
+        if (isNaN(lat) || isNaN(lng)) {
+            showCustomMessage('الرجاء إدخال إحداثيات صحيحة أو تحديد الموقع على الخريطة.', 'error');
+            return;
+        }
+
+        const button = document.getElementById('saveProfileButton');
+        button.disabled = true;
+        button.textContent = 'جاري الحفظ...';
+
+        localStorage.setItem('userLat', String(lat));
+        localStorage.setItem('userLng', String(lng));
+        if (name) localStorage.setItem('userName', name);
+
+        const userRef = getUserProfileRef();
+        if (userRef) {
+            try {
+                await setDoc(userRef, {
+                    name: name,
+                    phone: userPhone,
+                    lat: lat,
+                    lng: lng,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+            } catch (err) {
+                console.warn("Firestore save warning:", err);
+            }
+        }
+
+        showCustomMessage('✅ تم حفظ بياناتك وموقعك بنجاح!', 'success');
+        button.disabled = false;
+        button.textContent = '💾 حفظ التغييرات';
+    };
+
+    window.logout = async function() {
+        try {
+            if (auth) await signOut(auth);
+        } catch (_) {}
+        localStorage.removeItem('userPhone');
+        localStorage.removeItem('accountType');
+        localStorage.removeItem('pharmacyName');
+        window.location.href = 'index.html';
+    };
+
+    window.detectAndUseGPS = function() {
+        if (!navigator.geolocation) {
+            showCustomMessage('متصفحك لا يدعم خدمات تحديد الموقع الجغرافي (GPS).', 'error');
+            return;
+        }
+        const button = document.getElementById('gpsBtn');
+        const originalText = button.textContent;
+        button.textContent = 'جاري تحديد الموقع...';
+        button.disabled = true;
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                latInput.value = lat.toFixed(6);
+                lngInput.value = lng.toFixed(6);
+                setCoordsAndMarker(lat, lng, true);
+                showCustomMessage('✅ تم تحديث موقعك تلقائياً من الـ GPS.', 'success');
+                button.textContent = originalText;
+                button.disabled = false;
+            },
+            (error) => {
+                let errorMessage = 'فشل في الوصول لموقعك الحالي. يمكنك التحديد يدوياً على الخريطة.';
+                if (error && error.code === error.PERMISSION_DENIED) {
+                    errorMessage = 'تم رفض إذن الوصول للموقع. يمكنك تحديد موقعك يدوياً على الخريطة.';
+                }
+                showCustomMessage(errorMessage, 'error');
+                button.textContent = originalText;
+                button.disabled = false;
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
+
+    function showCustomMessage(message, type = 'info') {
+        const old = document.getElementById('customMessageBox');
+        if (old) old.remove();
+
+        const msgBox = document.createElement('div');
+        msgBox.id = 'customMessageBox';
+        Object.assign(msgBox.style, {
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            zIndex: '3000',
+            padding: '13px 20px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            fontWeight: '700',
+            textAlign: 'center',
+            maxWidth: '90%',
+            fontFamily: 'Cairo, sans-serif',
+            color: '#fff',
+            backgroundColor: type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8'
+        });
+        msgBox.textContent = message;
+        document.body.appendChild(msgBox);
+        setTimeout(() => msgBox.remove(), 3000);
+    }
+
+    window.closeSidebar = function(){ document.getElementById('sidebar').style.width='0'; };
+    window.closeInfoSidebar = function(){ document.getElementById('infoSidebar').style.width='0'; };
+    window.toggleSidebar = function(){
+        const sidebar = document.getElementById('sidebar');
+        sidebar.style.width = sidebar.style.width === '250px' ? '0' : '250px';
+        closeInfoSidebar();
+    };
+    window.toggleInfoSidebar = function(){
+        const sidebar = document.getElementById('infoSidebar');
+        sidebar.style.width = sidebar.style.width === '250px' ? '0' : '250px';
+        closeSidebar();
+    };
+
+    async function startApp() {
+        await initializeFirebase();
+        await loadUserData();
+        if (map) {
+            setTimeout(() => map.invalidateSize(), 150);
+        }
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        startApp();
+    } else {
+        window.addEventListener('DOMContentLoaded', startApp);
+    }
+</script>
+
+<script>
+  (async function ensureAllSidebarButtonsAndRoles() {
+    const ADMIN_PHONE = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+
+    const digits = digitsOnly(localStorage.getItem("userPhone") || "");
+    const isAdmin = Boolean(digits) && (
+      digits === ADMIN_PHONE ||
+      (tail9(digits).length === 9 && tail9(digits) === tail9(ADMIN_PHONE))
+    );
+
+    let isPharmacist = localStorage.getItem("accountType") === "pharmacist";
+    let phName = String(localStorage.getItem("pharmacyName") || "").trim();
+
+    if (digits && typeof db !== "undefined" && db) {
+      try {
+        const dSnap = await db.collection("pharmacies").doc(digits).get();
+        if (dSnap.exists) {
+          const d = dSnap.data() || {};
+          isPharmacist = true;
+          phName = String(d.name || d.pharmacyName || phName || "").trim();
+        }
+        if (!isPharmacist) {
+          const qSnap = await db.collection("pharmacies").where("phone", "==", digits).limit(1).get();
+          if (!qSnap.empty) {
+            const d = qSnap.docs[0].data() || {};
+            isPharmacist = true;
+            phName = String(d.name || d.pharmacyName || phName || "").trim();
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (isPharmacist) localStorage.setItem("accountType", "pharmacist");
+    if (phName) localStorage.setItem("pharmacyName", phName);
+
+    const sessionEl = document.getElementById("sessionInfo");
+    if (sessionEl) {
+      sessionEl.textContent = (isPharmacist && phName) ? phName : (digits || "غير مسجل");
+    }
+
+    const menuItems = [
+      { href: "profile.html", label: "⚙️ تعديل الملف الشخصي والموقع", bg: "#495057", role: "all" },
+      { href: "index.html", label: "💊 صفحة الاستعلام عن دواء", bg: "#495057", role: "all" },
+      { href: "history.html", label: "📜 الأسئلة السابقة", bg: "#0284c7", role: "all" },
+      { href: "notifications.html", label: "🔔 الإشعارات", bg: "#475569", role: "all" },
+      { href: "daway.html", label: "📱 تحميل تطبيق دواي السودان", bg: "#495057", role: "all" },
+      { href: "pharmacist-replies.html", label: "📩 الرد على الأسئلة الواردة", bg: "#0369a1", role: "pharmacist" },
+      { href: "addph.html", label: "✏️ تعديل بيانات الصيدلية", bg: "#0f766e", role: "pharmacist" },
+      { href: "pharmacies.html", label: "🏥 إدارة الصيدليات وجلسات الواتساب", bg: "#0f766e", role: "admin" }
+    ];
+
+    const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
+    sidebars.forEach((sb) => {
+      const prevContainer = sb.querySelector("#previousQuestionsContainer");
+      menuItems.forEach((item) => {
+        let link = sb.querySelector('a[href="' + item.href + '"]');
+        if (!link) {
+          link = document.createElement("a");
+          link.href = item.href;
+          link.textContent = item.label;
+          link.style.cssText = "font-weight: bold; background: " + item.bg + "; color: white;";
+          if (item.href === "pharmacies.html") {
+            link.id = "adminPharmaciesLink";
+          }
+          if (prevContainer) {
+            sb.insertBefore(link, prevContainer);
+          } else {
+            sb.appendChild(link);
+          }
+        }
+        link.setAttribute("data-menu-role", item.role);
+
+        if (item.role === "admin") {
+          link.style.setProperty("display", isAdmin ? "block" : "none", "important");
+        } else if (item.role === "pharmacist") {
+          link.style.setProperty("display", (isPharmacist || isAdmin) ? "block" : "none", "important");
+        } else {
+          link.style.setProperty("display", "block", "important");
+        }
+      });
+    });
+
+    document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
+      el.style.setProperty("display", isAdmin ? "block" : "none", "important");
+    });
+  })();
+</script>
+
+</body>
+</html>

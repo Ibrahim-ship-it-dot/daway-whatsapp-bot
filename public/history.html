@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الأسئلة السابقة - اسأل الصيدلية</title>
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00bcd4"/>
+<style>
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #f4f7f9;
+    margin: 0;
+    padding: 16px;
+  }
+  .hist-wrapper {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+  .hist-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 14px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .hist-topbar h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #1a202c;
+  }
+  .hist-account-badge {
+    font-size: 12px;
+    color: #00796b;
+    background: #e0f2f1;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    display: inline-block;
+    margin-top: 4px;
+  }
+  .hist-nav-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .hist-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 13px;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 13px;
+    color: #fff;
+    background: #495057;
+  }
+  .hist-btn.primary {
+    background: #00bcd4;
+  }
+  .hist-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    border-right: 5px solid #0284c7;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .hist-card.avail {
+    border-right-color: #2e7d32;
+  }
+  .hist-card.unavail {
+    border-right-color: #c62828;
+  }
+  .hist-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .hist-med {
+    font-size: 16px;
+    font-weight: 800;
+    color: #111827;
+  }
+  .hist-status {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 800;
+  }
+  .hist-status.avail {
+    background: #e8f5e9;
+    color: #1b5e20;
+  }
+  .hist-status.unavail {
+    background: #ffebee;
+    color: #b71c1c;
+  }
+  .hist-status.pending {
+    background: #e0f7fa;
+    color: #006064;
+  }
+  .hist-meta {
+    font-size: 13px;
+    color: #4b5563;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .hist-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+  .hist-action-open {
+    background: #00bcd4;
+    color: #fff;
+    text-decoration: none;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+  .hist-action-reask {
+    background: #0f172a;
+    color: #fff;
+    text-decoration: none;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+  .hist-empty {
+    background: #ffffff;
+    padding: 28px 18px;
+    border-radius: 12px;
+    text-align: center;
+    color: #6b7280;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+<div class="hist-wrapper">
+  <div class="hist-topbar">
+    <div>
+      <h2>📜 الأسئلة السابقة</h2>
+      <span id="histAccountBadge" class="hist-account-badge">رقم الحساب: ...</span>
+    </div>
+    <div class="hist-nav-btns">
+      <a href="notifications.html" class="hist-btn primary">🔔 الإشعارات</a>
+      <a href="index.html" class="hist-btn">🏠 الرئيسية</a>
+    </div>
+  </div>
+  <div id="historyList">
+    <div class="hist-empty">⏳ جاري تحميل الأسئلة السابقة...</div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDlEBzVFhJzFkDI4mWnTSEQbUGOYBoVvbI",
+    authDomain: "group-2f790.firebaseapp.com",
+    projectId: "group-2f790",
+    storageBucket: "group-2f790.firebasestorage.app",
+    messagingSenderId: "532610990999",
+    appId: "1:532610990999:web:1ad2bf5149c68774e57ad2"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  function cleanDigits(v) {
+    return String(v || "").replace(/\D/g, "");
+  }
+
+  function phoneTail9(v) {
+    const d = cleanDigits(v);
+    return d.length > 9 ? d.slice(-9) : d;
+  }
+
+  function parseDateMs(val) {
+    if (!val) return 0;
+    try {
+      if (val.toDate) return val.toDate().getTime();
+      const t = new Date(val).getTime();
+      return isNaN(t) ? 0 : t;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function formatDateLabel(val) {
+    const ms = parseDateMs(val);
+    if (!ms) return "غير محدد";
+    try {
+      return new Date(ms).toLocaleString("ar-SD", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch (_) {
+      return new Date(ms).toISOString();
+    }
+  }
+
+  function getLocalQuestions(phone) {
+    try {
+      return JSON.parse(localStorage.getItem("savedUserQuestions_" + phone) || "[]");
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function renderHistoryItems(items) {
+    const container = document.getElementById("historyList");
+    if (!container) return;
+
+    if (!items.length) {
+      container.innerHTML = '<div class="hist-empty">لا توجد أسئلة سابقة مسجلة لهذا الحساب حتى الآن.</div>';
+      return;
+    }
+
+    container.innerHTML = items.map(q => {
+      const st = String(q.Status || q.status || "قيد الانتظار");
+      const isAvail = st === "متوفر";
+      const isUnavail = st === "غير متوفر";
+      const cls = isAvail ? "avail" : (isUnavail ? "unavail" : "pending");
+      const badgeLabel = isAvail ? "✅ متوفر" : (isUnavail ? "❌ غير متوفر" : "⏳ " + st);
+      const responsesCount = Array.isArray(q.responses) ? q.responses.length : 0;
+      const rangeVal = q.range || q.searchRange || 4;
+      const dateStr = formatDateLabel(q.createdAt || q.updatedAt);
+
+      const qParams = new URLSearchParams({
+        queryId: q.id || "",
+        medicine: q.medicine || ""
+      });
+      const reaskParams = new URLSearchParams({
+        medicine: q.medicine || "",
+        range: String(rangeVal),
+        autoAsk: "1"
+      });
+
+      return `
+        <div class="hist-card ${cls}">
+          <div class="hist-head">
+            <div class="hist-med">💊 ${q.medicine || "دواء"}</div>
+            <span class="hist-status ${cls}">${badgeLabel}</span>
+          </div>
+          <div class="hist-meta">
+            <div><strong>النطاق:</strong> ${rangeVal} كم | <strong>عدد الردود:</strong> ${responsesCount}</div>
+            <div><strong>التاريخ:</strong> ${dateStr}</div>
+          </div>
+          <div class="hist-actions">
+            <a href="results.html?${qParams.toString()}" class="hist-action-open">📋 عرض النتائج والردود</a>
+            <a href="results.html?${reaskParams.toString()}" class="hist-action-reask">🔄 إعادة السؤال</a>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const phone = (localStorage.getItem("userPhone") || "").trim();
+    const badge = document.getElementById("histAccountBadge");
+    if (badge) {
+      badge.textContent = phone ? ("رقم الحساب: " + phone) : "يرجى تسجيل الدخول برقم الهاتف";
+    }
+    if (!phone) {
+      document.getElementById("historyList").innerHTML =
+        '<div class="hist-empty">يرجى تسجيل الدخول أولاً لعرض الأسئلة السابقة.</div>';
+      return;
+    }
+
+    const myTail = phoneTail9(phone);
+    const localList = getLocalQuestions(phone);
+    if (localList.length) {
+      renderHistoryItems(localList.sort((a, b) => parseDateMs(b.createdAt || b.updatedAt) - parseDateMs(a.createdAt || a.updatedAt)));
+    }
+
+    db.collection("AskPharmacy").onSnapshot((snap) => {
+      const mergedMap = new Map();
+      localList.forEach(item => {
+        if (item && (item.id || item.medicine)) {
+          mergedMap.set(item.id || ("loc_" + item.medicine + "_" + (item.createdAt || "")), item);
+        }
+      });
+
+      snap.forEach(doc => {
+        const d = doc.data() || {};
+        const refPhone = d.UserPhone || d.userPhone || d.phone || "";
+        const belongs =
+          cleanDigits(refPhone) === cleanDigits(phone) ||
+          (myTail.length >= 7 && phoneTail9(refPhone) === myTail);
+        if (belongs) {
+          mergedMap.set(doc.id, { id: doc.id, ...d });
+        }
+      });
+
+      const sorted = Array.from(mergedMap.values())
+        .sort((a, b) => parseDateMs(b.createdAt || b.updatedAt) - parseDateMs(a.createdAt || a.updatedAt));
+      renderHistoryItems(sorted);
+    }, () => {
+      if (!localList.length) {
+        document.getElementById("historyList").innerHTML =
+          '<div class="hist-empty">تعذر جلب الأسئلة السابقة من الخادم.</div>';
+      }
+    });
+  });
+</script>
+
+<script>
+  (function enforceAdminOnlyPharmaciesVisibility() {
+    const ADMIN_NUMBER = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+
+    function isCurrentUserAdmin() {
+      const cur = digitsOnly(localStorage.getItem("userPhone"));
+      if (!cur) return false;
+      return cur === ADMIN_NUMBER || (tail9(cur).length === 9 && tail9(cur) === tail9(ADMIN_NUMBER));
+    }
+
+    function applyVisibility() {
+      const allowed = isCurrentUserAdmin();
+      if (allowed) {
+        localStorage.setItem("isAdmin", "true");
+        localStorage.setItem("userRole", "admin");
+      } else {
+        localStorage.removeItem("isAdmin");
+        if (localStorage.getItem("userRole") === "admin") {
+          localStorage.removeItem("userRole");
+        }
+      }
+
+      const links = document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink');
+      links.forEach((el) => {
+        el.style.setProperty("display", allowed ? "block" : "none", "important");
+      });
+    }
+
+    applyVisibility();
+    document.addEventListener("DOMContentLoaded", applyVisibility);
+    setTimeout(applyVisibility, 300);
+  })();
+</script>
+
+
+<script>
+  (async function syncPharmacyLinksAcrossAllSidebars() {
+    const ADMIN_NUMBER = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+
+    const curDigits = digitsOnly(localStorage.getItem("userPhone") || "");
+    const isAdmin = Boolean(curDigits) && (
+      curDigits === ADMIN_NUMBER ||
+      (tail9(curDigits).length === 9 && tail9(curDigits) === tail9(ADMIN_NUMBER))
+    );
+
+    let isPharmacist = (localStorage.getItem("accountType") === "pharmacist");
+    if (!isPharmacist && curDigits && typeof db !== "undefined" && db) {
+      try {
+        const directSnap = await db.collection("pharmacies").doc(curDigits).get();
+        if (directSnap.exists) {
+          isPharmacist = true;
+        } else {
+          const qSnap = await db.collection("pharmacies").where("phone", "==", curDigits).limit(1).get();
+          if (!qSnap.empty) isPharmacist = true;
+        }
+      } catch (_) {}
+    }
+
+    if (isPharmacist) {
+      localStorage.setItem("accountType", "pharmacist");
+    }
+
+    const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
+    sidebars.forEach((sb) => {
+      if (!sb.querySelector('a[href="pharmacist-replies.html"]')) {
+        const aReplies = document.createElement("a");
+        aReplies.href = "pharmacist-replies.html";
+        aReplies.setAttribute("data-ph-role", "pharmacist");
+        aReplies.style.cssText = "font-weight: bold; background: #0369a1; color: white;";
+        aReplies.textContent = "📩 الرد على الأسئلة";
+        sb.appendChild(aReplies);
+      }
+
+      if (!sb.querySelector('a[href="addph.html"]')) {
+        const aEdit = document.createElement("a");
+        aEdit.href = "addph.html";
+        aEdit.setAttribute("data-ph-role", "pharmacist");
+        aEdit.style.cssText = "font-weight: bold; background: #0f766e; color: white;";
+        aEdit.textContent = "✏️ تعديل بيانات الصيدلية";
+        sb.appendChild(aEdit);
+      }
+
+      if (!sb.querySelector('a[href="pharmacies.html"]')) {
+        const aAdmin = document.createElement("a");
+        aAdmin.id = "adminPharmaciesLink";
+        aAdmin.href = "pharmacies.html";
+        aAdmin.setAttribute("data-ph-role", "admin");
+        aAdmin.style.cssText = "font-weight: bold; background: #0f766e; color: white;";
+        aAdmin.textContent = "🏥 إدارة الصيدليات وجلسات الواتساب";
+        sb.appendChild(aAdmin);
+      }
+    });
+
+    document.querySelectorAll('a[href="pharmacist-replies.html"], a[href="addph.html"][data-ph-role="pharmacist"]').forEach((el) => {
+      el.style.setProperty("display", isPharmacist ? "block" : "none", "important");
+    });
+
+    document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
+      el.style.setProperty("display", isAdmin ? "block" : "none", "important");
+    });
+  })();
+</script>
+
+
+<script>
+  (async function ensureAllSidebarButtonsAndRoles() {
+    const ADMIN_PHONE = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+
+    const digits = digitsOnly(localStorage.getItem("userPhone") || "");
+    const isAdmin = Boolean(digits) && (
+      digits === ADMIN_PHONE ||
+      (tail9(digits).length === 9 && tail9(digits) === tail9(ADMIN_PHONE))
+    );
+
+    let isPharmacist = localStorage.getItem("accountType") === "pharmacist";
+    let phName = String(localStorage.getItem("pharmacyName") || "").trim();
+
+    if (digits && typeof db !== "undefined" && db) {
+      try {
+        const dSnap = await db.collection("pharmacies").doc(digits).get();
+        if (dSnap.exists) {
+          const d = dSnap.data() || {};
+          isPharmacist = true;
+          phName = String(d.name || d.pharmacyName || phName || "").trim();
+        }
+        if (!isPharmacist) {
+          const qSnap = await db.collection("pharmacies").where("phone", "==", digits).limit(1).get();
+          if (!qSnap.empty) {
+            const d = qSnap.docs[0].data() || {};
+            isPharmacist = true;
+            phName = String(d.name || d.pharmacyName || phName || "").trim();
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (isPharmacist) localStorage.setItem("accountType", "pharmacist");
+    if (phName) localStorage.setItem("pharmacyName", phName);
+
+    const sessionEl = document.getElementById("sessionInfo");
+    if (sessionEl) {
+      sessionEl.textContent = (isPharmacist && phName) ? phName : (digits || "غير مسجل");
+    }
+
+    const menuItems = [
+      { href: "profile.html", label: "⚙️ تعديل الملف الشخصي والموقع", bg: "#495057", role: "all" },
+      { href: "index.html", label: "💊 صفحة الاستعلام عن دواء", bg: "#495057", role: "all" },
+      { href: "history.html", label: "📜 الأسئلة السابقة", bg: "#0284c7", role: "all" },
+      { href: "notifications.html", label: "🔔 الإشعارات", bg: "#475569", role: "all" },
+      { href: "daway.html", label: "📱 تحميل تطبيق دواي السودان", bg: "#495057", role: "all" },
+      { href: "pharmacist-replies.html", label: "📩 الرد على الأسئلة الواردة", bg: "#0369a1", role: "pharmacist" },
+      { href: "addph.html", label: "✏️ تعديل بيانات الصيدلية", bg: "#0f766e", role: "pharmacist" },
+      { href: "pharmacies.html", label: "🏥 إدارة الصيدليات وجلسات الواتساب", bg: "#0f766e", role: "admin" }
+    ];
+
+    const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
+    sidebars.forEach((sb) => {
+      const prevContainer = sb.querySelector("#previousQuestionsContainer");
+      menuItems.forEach((item) => {
+        let link = sb.querySelector('a[href="' + item.href + '"]');
+        if (!link) {
+          link = document.createElement("a");
+          link.href = item.href;
+          link.textContent = item.label;
+          link.style.cssText = "font-weight: bold; background: " + item.bg + "; color: white;";
+          if (item.href === "pharmacies.html") {
+            link.id = "adminPharmaciesLink";
+          }
+          if (prevContainer) {
+            sb.insertBefore(link, prevContainer);
+          } else {
+            sb.appendChild(link);
+          }
+        }
+        link.setAttribute("data-menu-role", item.role);
+
+        if (item.role === "admin") {
+          link.style.setProperty("display", isAdmin ? "block" : "none", "important");
+        } else if (item.role === "pharmacist") {
+          link.style.setProperty("display", (isPharmacist || isAdmin) ? "block" : "none", "important");
+        } else {
+          link.style.setProperty("display", "block", "important");
+        }
+      });
+    });
+
+    document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
+      el.style.setProperty("display", isAdmin ? "block" : "none", "important");
+    });
+  })();
+</script>
+
+</body>
+</html>
