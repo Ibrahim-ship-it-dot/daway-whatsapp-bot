@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>الرئيسية - اسأل الصيدلية</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="public/style.css">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest"></script>
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="public/manifest.json">
 <meta name="theme-color" content="#00bcd4"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <div id="loading-screen" style="display:none !important;visibility:hidden !important;pointer-events:none !important;"></div>
@@ -81,11 +81,10 @@
     display: none;
   }
 </style>
-<a id="notifFabBtn" href="notifications.html" title="الإشعارات">
+<a id="notifFabBtn" data-route-page="notifications.html" href="public/notifications.html" title="الإشعارات">
   <span>🔔</span>
   <span id="notifBadgeCount">0</span>
 </a>
-
 
 <div id="sidebar">
     <div class="sidebar-header">
@@ -93,15 +92,10 @@
         <button onclick="logout()" style="background: #ff4d4d; border-radius: 5px; width: 100px; padding: 5px;">خروج</button>
     </div>
 
-    <a href="profile.html" style="font-weight: bold; background: #495057; color: white;">⚙️ تعديل الملف الشخصي والموقع</a>
-    
-
-
-    <a id="adminPharmaciesLink" href="pharmacies.html" style="font-weight: bold; background: #0f766e; color: white; display: none;">🏥 إدارة الصيدليات وجلسات الواتساب</a>
-
-    <a id="addphSidebarIncomingAsksLink" href="pharmacist-replies.html" style="display: none; font-weight: bold; background: #0369a1; color: white;">📩 الأسئلة الواردة</a>
+    <a data-route-page="profile.html" href="public/profile.html" style="font-weight: bold; background: #495057; color: white;">⚙️ تعديل الملف الشخصي والموقع</a>
+    <a id="adminPharmaciesLink" data-route-page="pharmacies.html" href="public/pharmacies.html" style="font-weight: bold; background: #0f766e; color: white; display: none;">🏥 إدارة الصيدليات وجلسات الواتساب</a>
+    <a id="addphSidebarIncomingAsksLink" data-route-page="pharmacist-replies.html" href="public/pharmacist-replies.html" style="display: none; font-weight: bold; background: #0369a1; color: white;">📩 الأسئلة الواردة</a>
     <div id="previousQuestionsContainer"></div>
-
 </div>
 
 <div id="infoSidebar">
@@ -114,8 +108,8 @@
             <li><strong>توفير الجهد:</strong> احصل على ردود سريعة وموثوقة دون الحاجة للتنقل.</li>
         </ul>
         <button onclick="closeInfoSidebar()">ابدأ البحث الآن</button>
-
-    </div><a id="editPharmacyBtn" href="addph.html" style="
+    </div>
+    <a id="editPharmacyBtn" data-route-page="addph.html" href="public/addph.html" style="
     display: none;
     margin-top: 30px;
     padding: 10px;
@@ -128,26 +122,14 @@
     font-size: 1.1em;
 ">
     ✏️ تعديل الصيدلية
-</a>  <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px;">
+    </a>
+    <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px;">
         <h5 style="font-weight: 700;">للتواصل مع المبرمج:</h5>
         <a href="https://wa.me/09128514785" target="_blank" class="contact-whatsapp" style="display: block; text-align: center; margin-top: 10px; padding: 10px; border-radius: 8px;">
             <i data-lucide="whatsapp" style="margin-left: 5px; vertical-align: middle;"></i>
             09128514785 (WhatsApp)
         </a>
     </div>
-    <a  style="
-    display: block;
-    margin-top: 30px;
-    padding: 10px;
-    background: #007bff;
-    color: white;
-    text-align: center;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: bold;
-    font-size: 1.1em;
-">
-</a>
 </div>
 
 <div class="search-container">
@@ -195,7 +177,6 @@
     <p id="locationSourceIndicator" class="hidden" style="font-size: 13px; color: #555; margin-top: 10px; background-color: #f0f0f0; padding: 5px 10px; border-radius: 5px;"></p>
 </div>
 
-
 <div id="khartoumFallbackMapBox" style="display:none; max-width:520px; margin:14px auto; background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:14px; text-align:right; box-shadow:0 4px 14px rgba(15,23,42,0.08);">
   <div style="font-weight:800; font-size:14px; color:#0f172a; margin-bottom:6px;">📍 لم يتوفر موقع محفوظ أو تعذر جلب الموقع تلقائياً — حدد موقعك على الخريطة</div>
   <div style="font-size:12.5px; color:#475569; margin-bottom:10px;">الموقع الافتراضي يبدأ في <strong>الخرطوم</strong>؛ اسحب الدبوس أو انقر على الخريطة في مكانك ثم اضغط حفظ.</div>
@@ -213,19 +194,85 @@
 
 <div id="errorBox" class="hidden"></div>
 
-
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-<script src="script.js"></script>
+<script src="public/script.js"></script>
 
+<script>
+  (function resolvePublicOrRootRoutes() {
+    const isUnderPublic = /\/public(\/|$)/i.test(window.location.pathname);
+    const prefix = isUnderPublic ? "" : "public/";
 
+    window.resolvePagePath = async function(pageName) {
+      const cleanName = String(pageName || "").replace(/^\/+/, "");
+      const candidatePublic = prefix + cleanName;
+      try {
+        const res = await fetch(candidatePublic, { method: "HEAD", cache: "no-store" });
+        if (res.ok) return candidatePublic;
+      } catch (_) {}
+      return cleanName;
+    };
 
+    window.buildResultsUrl = async function(queryString) {
+      const targetPage = await window.resolvePagePath("results.html");
+      return queryString ? (targetPage + "?" + queryString) : targetPage;
+    };
 
+    async function fixPageLinks() {
+      const links = document.querySelectorAll("a[data-route-page]");
+      for (const el of links) {
+        const page = el.getAttribute("data-route-page");
+        if (!page) continue;
+        el.href = await window.resolvePagePath(page);
+      }
+    }
 
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", fixPageLinks);
+    } else {
+      fixPageLinks();
+    }
+  })();
+</script>
 
+<script>
+  (function enforceAdminOnlyPharmaciesVisibility() {
+    const ADMIN_NUMBER = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
 
+    function isCurrentUserAdmin() {
+      const cur = digitsOnly(localStorage.getItem("userPhone"));
+      if (!cur) return false;
+      return cur === ADMIN_NUMBER || (tail9(cur).length === 9 && tail9(cur) === tail9(ADMIN_NUMBER));
+    }
 
+    function applyVisibility() {
+      const allowed = isCurrentUserAdmin();
+      if (allowed) {
+        localStorage.setItem("isAdmin", "true");
+        localStorage.setItem("userRole", "admin");
+      } else {
+        localStorage.removeItem("isAdmin");
+        if (localStorage.getItem("userRole") === "admin") {
+          localStorage.removeItem("userRole");
+        }
+      }
 
+      const links = document.querySelectorAll('a[href$="pharmacies.html"], #adminPharmaciesLink');
+      links.forEach((el) => {
+        el.style.setProperty("display", allowed ? "block" : "none", "important");
+      });
+    }
+
+    applyVisibility();
+    document.addEventListener("DOMContentLoaded", applyVisibility);
+    setTimeout(applyVisibility, 300);
+  })();
+</script>
 
 <script>
   (function autoLocateThenFallbackKhartoumMap() {
@@ -261,23 +308,18 @@
       return { medicine, range };
     }
 
-    function goToResultsNow(medicine, range) {
+    async function goToResultsNow(medicine, range) {
       const med = String(medicine || pendingMedicine || "").trim();
       const rng = String(range || pendingRange || "4").trim();
-      if (med) {
-        const params = new URLSearchParams({
-          medicine: med,
-          range: rng,
-          autoAsk: "1"
-        });
-        window.location.assign("results.html?" + params.toString());
-      } else {
-        const params = new URLSearchParams({
-          range: rng,
-          showPharmacies: "1"
-        });
-        window.location.assign("results.html?" + params.toString());
-      }
+      const params = med
+        ? new URLSearchParams({ medicine: med, range: rng, autoAsk: "1" }).toString()
+        : new URLSearchParams({ range: rng, showPharmacies: "1" }).toString();
+
+      const targetUrl = typeof window.buildResultsUrl === "function"
+        ? await window.buildResultsUrl(params)
+        : ("public/results.html?" + params);
+
+      window.location.assign(targetUrl);
     }
 
     async function persistLocation(lat, lng) {
@@ -407,7 +449,7 @@
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           await persistLocation(lat, lng);
-          goToResultsNow(pendingMedicine, pendingRange);
+          await goToResultsNow(pendingMedicine, pendingRange);
         },
         (err) => {
           let msg = "⚠️ تعذر استيراد الموقع تلقائياً — حدد موقعك على الخريطة في الخرطوم واضغط حفظ.";
@@ -437,7 +479,7 @@
 
       const saved = await checkSavedLocation();
       if (saved.ok) {
-        goToResultsNow(medicine, range);
+        await goToResultsNow(medicine, range);
         return false;
       }
 
@@ -460,7 +502,7 @@
         saveBtn.addEventListener("click", async () => {
           saveBtn.disabled = true;
           await persistLocation(chosenLat, chosenLng);
-          goToResultsNow(pendingMedicine, pendingRange);
+          await goToResultsNow(pendingMedicine, pendingRange);
         });
       }
 
@@ -474,7 +516,6 @@
     });
   })();
 </script>
-
 
 <script>
   (function killIndexWaitScreenImmediately() {
@@ -501,64 +542,8 @@
   })();
 </script>
 
-
 <script>
-  (async function syncIndexSidebarToMatchAddph() {
-    const ADMIN_NUMBER = "249128514785";
-    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
-    const tail9 = (v) => {
-      const d = digitsOnly(v);
-      return d.length > 9 ? d.slice(-9) : d;
-    };
-
-    const digits = digitsOnly(localStorage.getItem("userPhone") || "");
-    const isAdmin = Boolean(digits) && (
-      digits === ADMIN_NUMBER ||
-      (tail9(digits).length === 9 && tail9(digits) === tail9(ADMIN_NUMBER))
-    );
-
-    let isPh = localStorage.getItem("accountType") === "pharmacist";
-    let phName = String(localStorage.getItem("pharmacyName") || "").trim();
-
-    if (digits && typeof db !== "undefined" && db) {
-      try {
-        const dSnap = await db.collection("pharmacies").doc(digits).get();
-        if (dSnap.exists) {
-          const d = dSnap.data() || {};
-          isPh = true;
-          phName = String(d.name || d.pharmacyName || phName || "").trim();
-        }
-        if (!isPh) {
-          const qSnap = await db.collection("pharmacies").where("phone", "==", digits).limit(1).get();
-          if (!qSnap.empty) {
-            const d = qSnap.docs[0].data() || {};
-            isPh = true;
-            phName = String(d.name || d.pharmacyName || phName || "").trim();
-          }
-        }
-      } catch (_) {}
-    }
-
-    const sessEl = document.getElementById("sessionInfo");
-    if (sessEl) {
-      sessEl.textContent = (isPh && phName) ? phName : (digits || "غير مسجل");
-    }
-
-    const adminLink = document.getElementById("adminPharmaciesLink");
-    if (adminLink) {
-      adminLink.style.setProperty("display", isAdmin ? "block" : "none", "important");
-    }
-
-    const incomingLink = document.getElementById("addphSidebarIncomingAsksLink");
-    if (incomingLink) {
-      incomingLink.style.setProperty("display", isPh ? "block" : "none", "important");
-    }
-  })();
-</script>
-
-
-<script>
-  (async function ensureAllSidebarButtonsAndRoles() {
+  (async function syncIndexSidebarAndLinks() {
     const ADMIN_PHONE = "249128514785";
     const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
     const tail9 = (v) => {
@@ -603,27 +588,29 @@
     }
 
     const menuItems = [
-     
-           { href: "pharmacist-replies.html", label: "📩 الرد على الأسئلة الواردة", bg: "#0369a1", role: "pharmacist" },
-           { href: "profile.html", label: "⚙️ تعديل الملف الشخصي والموقع", bg: "#495057", role: "all" },
-      { href: "history.html", label: "📜 اسئيلتي السابقه", bg: "#0284c7", role: "all" },
-      { href: "notifications.html", label: "🔔 الإشعارات", bg: "#475569", role: "all" },
-
-      { href: "addph.html", label: "✏️ تعديل بيانات الصيدلية", bg: "#0f766e", role: "pharmacist" },
-      { href: "pharmacies.html", label: "🏥 إدارة الصيدليات وجلسات الواتساب", bg: "#0f766e", role: "admin" }
+      { page: "pharmacist-replies.html", label: "📩 الرد على الأسئلة الواردة", bg: "#0369a1", role: "pharmacist" },
+      { page: "profile.html", label: "⚙️ تعديل الملف الشخصي والموقع", bg: "#495057", role: "all" },
+      { page: "history.html", label: "📜 اسئيلتي السابقه", bg: "#0284c7", role: "all" },
+      { page: "notifications.html", label: "🔔 الإشعارات", bg: "#475569", role: "all" },
+      { page: "addph.html", label: "✏️ تعديل بيانات الصيدلية", bg: "#0f766e", role: "pharmacist" },
+      { page: "pharmacies.html", label: "🏥 إدارة الصيدليات وجلسات الواتساب", bg: "#0f766e", role: "admin" }
     ];
 
     const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
-    sidebars.forEach((sb) => {
+    for (const sb of sidebars) {
       const prevContainer = sb.querySelector("#previousQuestionsContainer");
-      menuItems.forEach((item) => {
-        let link = sb.querySelector('a[href="' + item.href + '"]');
+      for (const item of menuItems) {
+        const resolvedHref = typeof window.resolvePagePath === "function"
+          ? await window.resolvePagePath(item.page)
+          : ("public/" + item.page);
+
+        let link = sb.querySelector('a[data-route-page="' + item.page + '"], a[href$="' + item.page + '"]');
         if (!link) {
           link = document.createElement("a");
-          link.href = item.href;
+          link.setAttribute("data-route-page", item.page);
           link.textContent = item.label;
           link.style.cssText = "font-weight: bold; background: " + item.bg + "; color: white;";
-          if (item.href === "pharmacies.html") {
+          if (item.page === "pharmacies.html") {
             link.id = "adminPharmaciesLink";
           }
           if (prevContainer) {
@@ -632,6 +619,7 @@
             sb.appendChild(link);
           }
         }
+        link.href = resolvedHref;
         link.setAttribute("data-menu-role", item.role);
 
         if (item.role === "admin") {
@@ -641,10 +629,10 @@
         } else {
           link.style.setProperty("display", "block", "important");
         }
-      });
-    });
+      }
+    }
 
-    document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
+    document.querySelectorAll('a[href$="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
       el.style.setProperty("display", isAdmin ? "block" : "none", "important");
     });
   })();
