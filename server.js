@@ -26,16 +26,13 @@ app.use((req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-const PUBLIC_DIR = path.join(__dirname, "public");
+const PUBLIC_DIR = __dirname;
 const SESSIONS_ROOT = path.join(__dirname, "sessions");
 const SESSION_IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 
 app.use(express.json());
 app.use(express.static(PUBLIC_DIR));
 
-if (!fs.existsSync(PUBLIC_DIR)) {
-  fs.mkdirSync(PUBLIC_DIR, { recursive: true });
-}
 if (!fs.existsSync(SESSIONS_ROOT)) {
   fs.mkdirSync(SESSIONS_ROOT, { recursive: true });
 }
@@ -138,11 +135,7 @@ function listSavedSessionEntries() {
       }
     } catch (_) {}
 
-    entries.push({
-      sessionId: sid,
-      credPhone,
-      credLid,
-    });
+    entries.push({ sessionId: sid, credPhone, credLid });
   }
   return entries;
 }
@@ -169,7 +162,6 @@ function findMatchingSessionEntryForPharmacy(docId, pharmacyData = {}, savedEntr
     );
     if (matched) return matched;
   }
-
   return null;
 }
 
@@ -263,7 +255,6 @@ function unwrapMessage(message) {
 function extractMessageText(message) {
   const unwrapped = unwrapMessage(message);
   if (!unwrapped) return "";
-
   return (
     unwrapped.conversation ||
     unwrapped.extendedTextMessage?.text ||
@@ -304,7 +295,6 @@ function extractQuotedMessageData(message, sess) {
   }
 
   const matchedMeta = stanzaId ? sentQuestionMetaMap.get(stanzaId) : null;
-
   if (!quotedText && !stanzaId && !participant && !remoteJid && !matchedMeta) {
     return null;
   }
@@ -445,11 +435,9 @@ async function closeWhatsAppSession(sessionId) {
 
 function waitUntilReady(sess, timeoutMs = 15000) {
   const isReady = () => Boolean(sess && sess.sock && sess.status === "connected");
-
   if (isReady()) {
     return Promise.resolve(sess);
   }
-
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       clearInterval(interval);
@@ -496,7 +484,13 @@ function parseReplyStatus(replyText) {
   return replyText.trim();
 }
 
-
+function quotedMessageDataPharmacyName(replyRecord, sess) {
+  const qText = (replyRecord && replyRecord.quotedMessageData && replyRecord.quotedMessageData.quotedText) || "";
+  const m = qText.match(/الصيدلية:\s*([^(\n]+)/);
+  if (m && m[1]) return m[1].trim();
+  if (sess && sess.lastAskContext && sess.lastAskContext.pharmacyName) return sess.lastAskContext.pharmacyName;
+  return "";
+}
 
 async function saveNotificationToFirestore({ askId, askData, replyRecord, sess, pharmacyId, pharmacyPhone, statusLabel, rawText, eventType }) {
   if (!db) return;
@@ -560,7 +554,7 @@ async function saveNotificationToFirestore({ askId, askData, replyRecord, sess, 
       rawReplyText: rawText || "",
       isRead: false,
       createdAt: nowIso,
-      updatedAt: nowIso
+      updatedAt: nowIso,
     });
 
     console.log("🔔 تم إنشاء إشعار جديد في notifications تحت مرجع [" + referencePhone + "] -> " + pharmacyName + " (" + statusLabel + ")");
@@ -587,7 +581,7 @@ function startAskPharmacyUpdatesWatcher() {
         respCount: responsesArr.length,
         lastRespStatus: lastResp ? (lastResp.status || lastResp.rawReplyText || "") : "",
         lastRespText: lastResp ? (lastResp.rawReplyText || "") : "",
-        medicine: d.medicine || ""
+        medicine: d.medicine || "",
       });
 
       const prevSig = trackedAskSnapshots.get(docId);
@@ -612,20 +606,11 @@ function startAskPharmacyUpdatesWatcher() {
           pharmacyPhone: phPhone,
           statusLabel: latestStatus,
           rawText: latestText,
-          eventType: "question_updated"
+          eventType: "question_updated",
         });
       }
     });
   }, function() {});
-}
-
-
-function quotedMessageDataPharmacyName(replyRecord, sess) {
-  const qText = (replyRecord && replyRecord.quotedMessageData && replyRecord.quotedMessageData.quotedText) || "";
-  const m = qText.match(/الصيدلية:\s*([^(\n]+)/);
-  if (m && m[1]) return m[1].trim();
-  if (sess && sess.lastAskContext && sess.lastAskContext.pharmacyName) return sess.lastAskContext.pharmacyName;
-  return "";
 }
 
 async function handleIncomingPharmacySelfReply(sess, msg) {
@@ -837,7 +822,6 @@ async function buildPharmacySessionStatuses() {
     const isWhatsappConnected = Boolean(
       hasSavedSession && liveSess && liveSess.status === "connected" && liveSess.sock
     );
-
     const autoStatus = !hasSavedSession
       ? "غير متصل"
       : sessionStatus === "closed"
@@ -998,6 +982,9 @@ app.post("/api/session/add", async (req, res) => {
   try {
     const rawSessionId = req.body?.sessionId;
     const rawPhone = req.body?.phone;
+    const wantPairingCode = Boolean(
+      req.body?.usePairingCode === true || req.body?.method === "pair"
+    );
     const cleanId = sanitizeSessionId(rawSessionId || cleanPhone(rawPhone));
 
     if (!cleanId) {
@@ -1007,7 +994,7 @@ app.post("/api/session/add", async (req, res) => {
     const sess = await startWhatsAppSession(cleanId);
     let code = sess.pairingCode || null;
 
-    if (rawPhone) {
+    if (wantPairingCode && rawPhone) {
       const normalizedNum = normalizeSudanPhone(rawPhone) || cleanPhone(rawPhone);
       if (normalizedNum && normalizedNum.length >= 8 && !sess.sock?.authState?.creds?.registered) {
         await new Promise((r) => setTimeout(r, 800));
@@ -1015,6 +1002,11 @@ app.post("/api/session/add", async (req, res) => {
           code = await sess.sock.requestPairingCode(normalizedNum);
           sess.pairingCode = code;
         }
+      }
+    } else if (!sess.qrDataUrl && sess.status !== "connected") {
+      for (let i = 0; i < 10; i++) {
+        if (sess.qrDataUrl || sess.status === "connected") break;
+        await new Promise((r) => setTimeout(r, 300));
       }
     }
 
@@ -1032,7 +1024,7 @@ app.post("/api/session/add", async (req, res) => {
 
 app.post("/api/pair", async (req, res) => {
   try {
-    const cleanId = sanitizeSessionId(req.body?.sessionId);
+    const cleanId = sanitizeSessionId(req.body?.sessionId || cleanPhone(req.body?.phone));
     const num = normalizeSudanPhone(req.body?.phone) || cleanPhone(req.body?.phone);
 
     if (!cleanId) {
@@ -1250,7 +1242,6 @@ app.post("/api/ask", async (req, res) => {
 app.get("/", (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 });
-
 
 async function restoreAllSessionsFromFirestore() {
   if (!db) return;
