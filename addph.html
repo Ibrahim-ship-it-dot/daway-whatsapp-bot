@@ -8,10 +8,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<<<<<<< HEAD
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-=======
->>>>>>> 71f9fe91870d840d5a90495e44a97325a0d48024
 
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
@@ -72,13 +69,8 @@
             display: none;
         }
         .wa-conn-banner {
-<<<<<<< HEAD
             margin-top: 10px;
             padding: 10px 12px;
-=======
-            margin-top: 12px;
-            padding: 11px 13px;
->>>>>>> 71f9fe91870d840d5a90495e44a97325a0d48024
             border-radius: 9px;
             font-size: 12.5px;
             font-weight: 700;
@@ -94,7 +86,6 @@
             border: 1px solid #ef9a9a;
             color: #b71c1c;
         }
-<<<<<<< HEAD
         .wa-conn-banner.waiting {
             background: #fef3c7;
             border: 1px solid #fcd34d;
@@ -203,8 +194,6 @@
             text-align: right;
             line-height: 1.65;
         }
-=======
->>>>>>> 71f9fe91870d840d5a90495e44a97325a0d48024
         .wa-guide-box {
             margin-top: 12px;
             background: #ffffff;
@@ -283,77 +272,6 @@
             border-radius: 6px !important;
             box-shadow: none !important;
         }
-<<<<<<< HEAD
-=======
-        .incoming-asks-box {
-            margin-top: 18px;
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 12px;
-            padding: 14px;
-            text-align: right;
-        }
-        .ask-item-card {
-            border: 1px solid #e2e8f0;
-            border-right: 4px solid #00bcd4;
-            border-radius: 10px;
-            padding: 10px 12px;
-            margin-top: 10px;
-            background: #f8fafc;
-        }
-        .ask-item-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            font-weight: 800;
-            font-size: 13.5px;
-            color: #0f172a;
-        }
-        .ask-item-meta {
-            font-size: 12px;
-            color: #475569;
-            margin-top: 4px;
-        }
-        .ask-reply-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 8px;
-        }
-        .ask-btn-avail {
-            background: #16a34a !important;
-            color: #fff !important;
-            width: auto !important;
-            max-width: none !important;
-            padding: 6px 12px !important;
-            font-size: 12px !important;
-            border-radius: 7px !important;
-            box-shadow: none !important;
-        }
-        .ask-btn-unavail {
-            background: #dc2626 !important;
-            color: #fff !important;
-            width: auto !important;
-            max-width: none !important;
-            padding: 6px 12px !important;
-            font-size: 12px !important;
-            border-radius: 7px !important;
-            box-shadow: none !important;
-        }
-        .ask-btn-edit {
-            background: #475569 !important;
-            color: #fff !important;
-            width: auto !important;
-            max-width: none !important;
-            padding: 6px 12px !important;
-            font-size: 12px !important;
-            border-radius: 7px !important;
-            box-shadow: none !important;
-        }
-    
->>>>>>> 71f9fe91870d840d5a90495e44a97325a0d48024
         .field-inline-error {
             color: #c62828;
             background: #ffebee;
@@ -372,7 +290,6 @@
             margin-top: 6px;
             min-height: 18px;
         }
-<<<<<<< HEAD
     </style>
 </head>
 <body>
@@ -422,116 +339,6 @@
             </a>
         </div>
     </div>
-=======
-
-    
-        .asks-pagination-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-            margin-top: 12px;
-            padding-top: 10px;
-            border-top: 1px solid #e2e8f0;
-            flex-wrap: wrap;
-        }
-        .asks-page-btn {
-            background: #0284c7 !important;
-            color: #fff !important;
-            width: auto !important;
-            max-width: none !important;
-            padding: 6px 14px !important;
-            font-size: 12px !important;
-            font-weight: 700 !important;
-            border-radius: 7px !important;
-            box-shadow: none !important;
-            cursor: pointer;
-        }
-        .asks-page-btn:disabled {
-            background: #cbd5e1 !important;
-            color: #64748b !important;
-            cursor: not-allowed !important;
-        }
-        .asks-page-info {
-            font-size: 12px;
-            font-weight: 800;
-            color: #334155;
-        }
-
-    </style>
-</head>
-<body>
-        <div id="loading-screen">
-    <img src="images/daway_sudan_logo.png" alt="الشعار" id="logo-img">
-    <p>انتظر من فضلك...</p>
-</div>
-
-<button id="sidebarToggle" class="sidebar-toggle-button" onclick="toggleSidebar()">☰   </button>
-<button id="infoSidebarToggle" class="sidebar-toggle-button" onclick="toggleInfoSidebar()">💡</button>
-
-<div id="sidebar">
-    <div class="sidebar-header">
-        <span id="sessionInfo" style="font-weight: 700;"></span>
-        <button onclick="logout()" style="background: #ff4d4d; border-radius: 5px; width: 100px; padding: 5px;">خروج</button>
-    </div>
-
-    <a href="profile.html" style="font-weight: bold; background: #495057; color: white;">⚙️ تعديل الملف الشخصي والموقع</a>
-      <a href="index.html" style="font-weight: bold; background: #495057; color: white;">صفحة الاستعلام عن دواء</a>
-      <a href="daway.html" style="font-weight: bold; background: #495057; color: white;">تحميل تطبيق دواي السودان</a>
-
-    <a  id="adminPharmaciesLink"  style="font-weight: bold; background: #0f766e; color: white;; display: none;">🏥 إدارة الصيدليات وجلسات الواتساب</a>
-
-    <a id="addphSidebarIncomingAsksLink" href="pharmacist-replies.html" style="display: none; font-weight: bold; background: #0369a1; color: white;">📩 الأسئلة الواردة</a>
-
-    <div id="previousQuestionsContainer"></div>
-</div>
-
-<div id="infoSidebar">
-    <div class="info-content">
-        <h3>🚀 ابحث بذكاء عن دوائك</h3>
-        <p style="font-size:1.0em; font-weight: 400;">وداعًا للبحث الطويل! تطبيق **"اسأل الصيدلية"** بوابتك الفورية للعثور على أدويتك بسهولة وذكاء.</p>
-        <ul>
-            <li><strong>الأقرب والأسرع:</strong> نرسل استعلامك للصيدليات ضمن مسافة (حسب اختيارك).</li>
-            <li><strong>مقارنة فورية:</strong> شاهد حالة توفر الدواء (متوفر/غير متوفر) والمسافة الدقيقة.</li>
-            <li><strong>توفير الجهد:</strong> احصل على ردود سريعة وموثوقة دون الحاجة للتنقل.</li>
-        </ul>
-
-
-    </div><a href="index.html" style="
-    display: block;
-    margin-top: 30px;
-    padding: 10px;
-    background: #007bff;
-    color: white;
-    text-align: center;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: bold;
-    font-size: 1.1em;
-">
-    💊 جرب البحـــث عن دواء
-</a>  <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px;">
-        <h5 style="font-weight: 700;">للتواصل مع المبرمج:</h5>
-        <a href="https://wa.me/09128514785" target="_blank" class="contact-whatsapp" style="display: block; text-align: center; margin-top: 10px; padding: 10px; border-radius: 8px;">
-            <i data-lucide="whatsapp" style="margin-left: 5px; vertical-align: middle;"></i>
-            09128514785 (WhatsApp)
-        </a>
-    </div>
-    <a  style="
-    display: block;
-    margin-top: 30px;
-    padding: 10px;
-    background: #007bff;
-    color: white;
-    text-align: center;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: bold;
-    font-size: 1.1em;
-">
-</a>
-</div>
->>>>>>> 71f9fe91870d840d5a90495e44a97325a0d48024
 
     <div class="form-container">
         <h4 style="text-align: center;">إضافة صيدلية جديدة للمنصة </h4>
@@ -632,18 +439,13 @@
             </div>
         </div>
 
-<<<<<<< HEAD
         <!-- الخطوة 3: التفاصيل، ربط الواتساب (أسلوب connect.html)، والحفظ -->
-=======
-        <!-- الخطوة 3: التفاصيل، جلسة الواتساب، والحفظ -->
->>>>>>> 71f9fe91870d840d5a90495e44a97325a0d48024
         <div id="wizardStep3" class="wizard-step">
             <div class="form-group">
                 <label for="pharmacyDetails">تفاصيل أخرى (اختياري)</label>
                 <textarea id="pharmacyDetails" rows="3" placeholder="مثال: تقع بجوار مستشفى الخرطوم، مواعيد العمل..."></textarea>
             </div>
 
-<<<<<<< HEAD
             <div id="waSessionBox" style="margin-top: 18px; padding: 14px; border: 1px solid #b2ebf2; background: #e0f7fa; border-radius: 12px; text-align: right;">
                 <h5 style="margin-top: 0; color: #006064; font-weight: 800;">📱 ربط الواتساب بالسيرفر (QR / كود الربط)</h5>
                 <div id="addphBackendLabel" style="font-size: 11.5px; color: #0f766e; font-weight: 700; word-break: break-all;"></div>
@@ -681,38 +483,6 @@
                         <li>افتح <strong>واتساب</strong> على هاتف الصيدلية واضغط <strong>الأجهزة المرتبطة (Linked Devices)</strong>.</li>
                         <li>اضغط <strong>ربط جهاز (Link a Device)</strong> وامسح رمز <strong>QR</strong> أو اختر <strong>الربط برقم الهاتف</strong> وأدخل <strong>كود الربط</strong>.</li>
                         <li>انتظر لحظات حتى يصبح الرقم <strong>متصلاً</strong> وجاهزاً لاستقبال والرد على استعلامات الأدوية.</li>
-=======
-            <div id="waSessionBox" style="margin-top: 20px; padding: 15px; border: 1px solid #b2ebf2; background: #e0f7fa; border-radius: 10px; text-align: right;">
-                <h5 style="margin-top: 0; color: #006064; font-weight: 800;">📱 ربط وتخزين جلسة الواتساب من السيرفر</h5>
-                <p style="font-size: 13px; color: #333; margin-bottom: 10px;">يتم ربط رقم الصيدلية بالجلسة وحفظها في السيرفر و Firestore حتى لا تُفقد.</p>
-
-                <div id="waConnectionAlert" class="wa-conn-banner disconnected">
-                    ⏳ جاري التحقق من حالة اتصال رقم الواتساب مع التطبيق...
-                </div>
-
-                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
-                    <button type="button" id="prepareWaSessionBtn" onclick="prepareAndLinkWhatsappSession()" style="background: #007bff; width: auto; flex: 1; min-width: 160px; font-size: 14px; padding: 10px 14px;">
-                        🔗 تجهيز وحفظ الجلسة
-                    </button>
-                    <button type="button" id="requestPairCodeBtn" onclick="requestWhatsappPairCode()" style="background: #00a854; width: auto; flex: 1; min-width: 140px; font-size: 14px; padding: 10px 14px;">
-                        🔑 طلب كود ربط
-                    </button>
-                    <button type="button" id="deleteWaSessionBtn" onclick="deleteWhatsappSession()" style="background: #dc3545; width: auto; flex: 1; min-width: 130px; font-size: 14px; padding: 10px 14px;">
-                        🗑️ حذف الجلسة
-                    </button>
-                </div>
-                <div id="waSessionStatusMsg" style="margin-top: 10px; font-size: 13px; font-weight: 700; color: #004d40;"></div>
-                <div id="waPairCodeBox" style="margin-top: 8px; font-size: 15px; font-weight: 800; color: #1b5e20; text-align: center;"></div>
-                <div id="waQrBox" style="margin-top: 8px; text-align: center;"></div>
-
-                <div class="wa-guide-box">
-                    <strong>📌 خطوات ربط الواتساب مع التطبيق (باركود أو كود):</strong>
-                    <ol>
-                        <li>افتح تطبيق <strong>واتساب (WhatsApp)</strong> على هاتف الصيدلية.</li>
-                        <li>اضغط على <strong>القائمة (⋮)</strong> أو <strong>الإعدادات</strong> ثم اختر <strong>الأجهزة المرتبطة (Linked Devices)</strong>.</li>
-                        <li>اضغط على <strong>ربط جهاز (Link a Device)</strong>، ثم إما امسح <strong>رمز الباركود (QR)</strong> الظاهر هنا، أو اضغط <strong>الربط برقم الهاتف</strong> وأدخل <strong>كود الربط</strong> بعد الضغط على زر <em>طلب كود ربط</em>.</li>
-                        <li>انتظر لحظات حتى يصبح الرقم <strong>متصلاً</strong> وجاهزاً لاستقبال استعلامات الأدوية والرد عليها فوراً.</li>
->>>>>>> 71f9fe91870d840d5a90495e44a97325a0d48024
                     </ol>
                 </div>
             </div>
@@ -726,7 +496,6 @@
                 <button type="button" class="btn-prev" onclick="goToWizardStep(2)">➡️ السابق</button>
             </div>
         </div>
-<<<<<<< HEAD
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -1319,481 +1088,5 @@
         });
       })();
     </script>
-=======
-
-        <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-    <script src="script.js"></script>
-
-    
-
-
-<script>
-  (function enforceAdminOnlyPharmaciesVisibility() {
-    const ADMIN_NUMBER = "249128514785";
-    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
-    const tail9 = (v) => {
-      const d = digitsOnly(v);
-      return d.length > 9 ? d.slice(-9) : d;
-    };
-
-    function isCurrentUserAdmin() {
-      const cur = digitsOnly(localStorage.getItem("userPhone"));
-      if (!cur) return false;
-      return cur === ADMIN_NUMBER || (tail9(cur).length === 9 && tail9(cur) === tail9(ADMIN_NUMBER));
-    }
-
-    function applyVisibility() {
-      const allowed = isCurrentUserAdmin();
-      if (allowed) {
-        localStorage.setItem("isAdmin", "true");
-        localStorage.setItem("userRole", "admin");
-      } else {
-        localStorage.removeItem("isAdmin");
-        if (localStorage.getItem("userRole") === "admin") {
-          localStorage.removeItem("userRole");
-        }
-      }
-
-      const links = document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink');
-      links.forEach((el) => {
-        el.style.setProperty("display", allowed ? "block" : "none", "important");
-      });
-    }
-
-    applyVisibility();
-    document.addEventListener("DOMContentLoaded", applyVisibility);
-    setTimeout(applyVisibility, 300);
-  })();
-</script>
-
-
-<script>
-  (function forceHideAddphLoadingScreen() {
-    function hideAddphLoadersNow() {
-      const ids = ["loading-screen", "loadingScreen", "pageLoader"];
-      ids.forEach((id) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.style.opacity = "0";
-        el.style.pointerEvents = "none";
-        setTimeout(() => {
-          if (el && el.parentNode) {
-            el.style.display = "none";
-          }
-        }, 200);
-      });
-    }
-
-    if (document.readyState === "complete" || document.readyState === "interactive") {
-      setTimeout(hideAddphLoadersNow, 150);
-    }
-    document.addEventListener("DOMContentLoaded", () => setTimeout(hideAddphLoadersNow, 150));
-    window.addEventListener("load", hideAddphLoadersNow);
-    setTimeout(hideAddphLoadersNow, 1200);
-  })();
-</script>
-
-
-<script>
-  (function initAddphAutoLoadAndReadiness() {
-    window.isWaCurrentlyConnected = window.isWaCurrentlyConnected || false;
-
-    function onlyDigits(v) {
-      return String(v || "").replace(/\D/g, "");
-    }
-
-    function isSudan12(v) {
-      return /^249\d{9}$/.test(onlyDigits(v));
-    }
-
-    function inSudan(latVal, lngVal) {
-      const lat = parseFloat(latVal);
-      const lng = parseFloat(lngVal);
-      if (isNaN(lat) || isNaN(lng)) return false;
-      return lat >= 3.5 && lat <= 23.0 && lng >= 21.5 && lng <= 39.0;
-    }
-
-    window.goToWizardStep = function(stepNum) {
-      const n = Number(stepNum) || 1;
-      [1, 2, 3].forEach((i) => {
-        const stepEl = document.getElementById("wizardStep" + i);
-        const badgeEl = document.getElementById("stepBadge" + i);
-        if (stepEl) stepEl.classList.toggle("active", i === n);
-        if (badgeEl) badgeEl.classList.toggle("active", i === n);
-      });
-      if (n === 2 && window._addphMap && typeof window._addphMap.invalidateSize === "function") {
-        setTimeout(() => window._addphMap.invalidateSize(), 150);
-      }
-    };
-
-    window.runReadinessDiagnostics = function() {
-      const phName = String(document.getElementById("pharmacyName")?.value || "").trim();
-      const ownerName = String(document.getElementById("pharmacyOwnerField")?.value || localStorage.getItem("pharmacyOwner") || "").trim();
-      const phPhone = onlyDigits(document.getElementById("pharmacyPhone")?.value || "");
-      const latVal = String(document.getElementById("lat")?.value || "").trim();
-      const lngVal = String(document.getElementById("lng")?.value || "").trim();
-
-      const dataOk = Boolean(phName && ownerName && isSudan12(phPhone));
-      const geoOk = inSudan(latVal, lngVal);
-      const waOk = Boolean(window.isWaCurrentlyConnected);
-
-      const dataBadge = document.getElementById("checkDataBadge");
-      const editDataBtn = document.getElementById("editDataBtn");
-      if (dataBadge) {
-        dataBadge.className = dataOk ? "check-status-ok" : "check-status-warn";
-        dataBadge.textContent = dataOk ? "✓ مكتمل صاح" : "⚠️ ناقص";
-      }
-      if (editDataBtn) editDataBtn.style.display = dataOk ? "none" : "inline-block";
-
-      const geoBadge = document.getElementById("checkGeoBadge");
-      const editGeoBtn = document.getElementById("editGeoBtn");
-      if (geoBadge) {
-        geoBadge.className = geoOk ? "check-status-ok" : "check-status-warn";
-        geoBadge.textContent = geoOk ? "✓ صاح" : "⚠️ غير محدد";
-      }
-      if (editGeoBtn) editGeoBtn.style.display = geoOk ? "none" : "inline-block";
-
-      const waBadge = document.getElementById("checkWaBadge");
-      const editWaBtn = document.getElementById("editWaBtn");
-      if (waBadge) {
-        waBadge.className = waOk ? "check-status-ok" : "check-status-warn";
-        waBadge.textContent = waOk ? "✓ صاح" : "⚠️ غير متصل";
-      }
-      if (editWaBtn) editWaBtn.style.display = waOk ? "none" : "inline-block";
-
-      const overall = document.getElementById("overallReadinessBadge");
-      if (overall) {
-        const allOk = dataOk && geoOk && waOk;
-        overall.className = allOk ? "check-status-ok" : "check-status-warn";
-        overall.textContent = allOk ? "✓ صاح" : "⚠️ ناقص";
-      }
-    };
-
-    async function checkWaStatusForPhone(phoneDigits) {
-      const banner = document.getElementById("waConnectionAlert");
-      if (!isSudan12(phoneDigits)) {
-        window.isWaCurrentlyConnected = false;
-        if (banner) {
-          banner.className = "wa-conn-banner disconnected";
-          banner.textContent = "⚠️ أدخل رقم واتساب سوداني صحيح (249XXXXXXXXX) لفحص الاتصال.";
-        }
-        window.runReadinessDiagnostics();
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/whatsapp/status?phone=" + encodeURIComponent(phoneDigits));
-        if (res.ok) {
-          const data = await res.json();
-          const connected = Boolean(data && (data.connected === true || data.status === "connected" || data.ready === true));
-          window.isWaCurrentlyConnected = connected;
-          if (banner) {
-            banner.className = "wa-conn-banner " + (connected ? "connected" : "disconnected");
-            banner.textContent = connected
-              ? "✅ رقم الواتساب متصل وجاهز لاستقبال والرد على الاستعلامات."
-              : "⚠️ رقم الواتساب غير متصل حالياً — اربطه بالباركود أو كود الربط.";
-          }
-          window.runReadinessDiagnostics();
-          return;
-        }
-      } catch (_) {}
-
-      window.isWaCurrentlyConnected = false;
-      if (banner) {
-        banner.className = "wa-conn-banner disconnected";
-        banner.textContent = "⚠️ تعذر التحقق من اتصال الواتساب حالياً أو الرقم غير متصل.";
-      }
-      window.runReadinessDiagnostics();
-    }
-
-    async function loadPharmacyDataFromFirestore(phoneDigits) {
-      const noticeEl = document.getElementById("existingPharmacyNotice");
-      if (!isSudan12(phoneDigits) || typeof db === "undefined" || !db) {
-        window.runReadinessDiagnostics();
-        return;
-      }
-
-      try {
-        let docData = null;
-        const directSnap = await db.collection("pharmacies").doc(phoneDigits).get();
-        if (directSnap.exists) {
-          docData = directSnap.data() || {};
-        } else {
-          const qSnap = await db.collection("pharmacies").where("phone", "==", phoneDigits).limit(1).get();
-          if (!qSnap.empty) {
-            docData = qSnap.docs[0].data() || {};
-          }
-        }
-
-        if (docData) {
-          const nameEl = document.getElementById("pharmacyName");
-          const ownerEl = document.getElementById("pharmacyOwnerField");
-          const detailsEl = document.getElementById("pharmacyDetails");
-          const latEl = document.getElementById("lat");
-          const lngEl = document.getElementById("lng");
-
-          if (nameEl && docData.name && !nameEl.value.trim()) nameEl.value = docData.name;
-          const ownerVal = docData.ownerName || docData.pharmacistName || docData.owner || "";
-          if (ownerEl && ownerVal && !ownerEl.value.trim()) {
-            ownerEl.value = ownerVal;
-            localStorage.setItem("pharmacyOwner", ownerVal);
-          }
-          if (detailsEl && (docData.details || docData.address) && !detailsEl.value.trim()) {
-            detailsEl.value = docData.details || docData.address;
-          }
-          if (latEl && docData.lat !== undefined && docData.lat !== null && !latEl.value.trim()) {
-            latEl.value = String(docData.lat);
-          }
-          if (lngEl && docData.lng !== undefined && docData.lng !== null && !lngEl.value.trim()) {
-            lngEl.value = String(docData.lng);
-          }
-
-          if (noticeEl) {
-            noticeEl.style.display = "block";
-            noticeEl.textContent = "ℹ️ تم جلب بيانات الصيدلية المسجلة مسبقاً لهذا الرقم — يمكنك تعديلها وحفظها.";
-          }
-        }
-      } catch (e) {
-        console.warn("Firestore pharmacy load warning:", e);
-      }
-
-      window.runReadinessDiagnostics();
-      await checkWaStatusForPhone(phoneDigits);
-    }
-
-    function initMapIfNeeded() {
-      const mapEl = document.getElementById("map");
-      if (!mapEl || typeof L === "undefined" || window._addphMap) return;
-      const latVal = parseFloat(document.getElementById("lat")?.value) || 15.5007;
-      const lngVal = parseFloat(document.getElementById("lng")?.value) || 32.5599;
-      const map = L.map("map").setView([latVal, lngVal], 13);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap"
-      }).addTo(map);
-      const marker = L.marker([latVal, lngVal], { draggable: true }).addTo(map);
-
-      const syncLatLng = (latlng) => {
-        const latInput = document.getElementById("lat");
-        const lngInput = document.getElementById("lng");
-        if (latInput) latInput.value = Number(latlng.lat).toFixed(6);
-        if (lngInput) lngInput.value = Number(latlng.lng).toFixed(6);
-        window.runReadinessDiagnostics();
-      };
-
-      marker.on("dragend", () => syncLatLng(marker.getLatLng()));
-      map.on("click", (ev) => {
-        marker.setLatLng(ev.latlng);
-        syncLatLng(ev.latlng);
-      });
-
-      window._addphMap = map;
-      window._addphMarker = marker;
-    }
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      const phoneInput = document.getElementById("pharmacyPhone");
-      const savedPhone = onlyDigits(localStorage.getItem("userPhone") || "");
-      if (phoneInput && savedPhone && !phoneInput.value.trim()) {
-        phoneInput.value = savedPhone;
-      }
-
-      const activePhone = onlyDigits(phoneInput?.value || savedPhone);
-      if (activePhone) {
-        const sessEl = document.getElementById("sessionInfo");
-        if (sessEl && !sessEl.textContent.trim()) {
-          sessEl.textContent = "رقم الجلسة: " + activePhone;
-        }
-      }
-
-      initMapIfNeeded();
-      window.runReadinessDiagnostics();
-
-      if (activePhone) {
-        await loadPharmacyDataFromFirestore(activePhone);
-      }
-
-      if (phoneInput) {
-        phoneInput.addEventListener("change", async () => {
-          const d = onlyDigits(phoneInput.value);
-          window.runReadinessDiagnostics();
-          if (isSudan12(d)) {
-            await loadPharmacyDataFromFirestore(d);
-          }
-        });
-      }
-    });
-  })();
-</script>
-
-
-<script>
-  (async function syncPharmacyLinksAcrossAllSidebars() {
-    const ADMIN_NUMBER = "249128514785";
-    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
-    const tail9 = (v) => {
-      const d = digitsOnly(v);
-      return d.length > 9 ? d.slice(-9) : d;
-    };
-
-    const curDigits = digitsOnly(localStorage.getItem("userPhone") || "");
-    const isAdmin = Boolean(curDigits) && (
-      curDigits === ADMIN_NUMBER ||
-      (tail9(curDigits).length === 9 && tail9(curDigits) === tail9(ADMIN_NUMBER))
-    );
-
-    let isPharmacist = (localStorage.getItem("accountType") === "pharmacist");
-    if (!isPharmacist && curDigits && typeof db !== "undefined" && db) {
-      try {
-        const directSnap = await db.collection("pharmacies").doc(curDigits).get();
-        if (directSnap.exists) {
-          isPharmacist = true;
-        } else {
-          const qSnap = await db.collection("pharmacies").where("phone", "==", curDigits).limit(1).get();
-          if (!qSnap.empty) isPharmacist = true;
-        }
-      } catch (_) {}
-    }
-
-    if (isPharmacist) {
-      localStorage.setItem("accountType", "pharmacist");
-    }
-
-    const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
-    sidebars.forEach((sb) => {
-      if (!sb.querySelector('a[href="pharmacist-replies.html"]')) {
-        const aReplies = document.createElement("a");
-        aReplies.href = "pharmacist-replies.html";
-        aReplies.setAttribute("data-ph-role", "pharmacist");
-        aReplies.style.cssText = "font-weight: bold; background: #0369a1; color: white;";
-        aReplies.textContent = "📩 الرد على الأسئلة";
-        sb.appendChild(aReplies);
-      }
-
-      if (!sb.querySelector('a[href="addph.html"]')) {
-        const aEdit = document.createElement("a");
-        aEdit.href = "addph.html";
-        aEdit.setAttribute("data-ph-role", "pharmacist");
-        aEdit.style.cssText = "font-weight: bold; background: #0f766e; color: white;";
-        aEdit.textContent = "✏️ تعديل بيانات الصيدلية";
-        sb.appendChild(aEdit);
-      }
-
-      if (!sb.querySelector('a[href="pharmacies.html"]')) {
-        const aAdmin = document.createElement("a");
-        aAdmin.id = "adminPharmaciesLink";
-        aAdmin.href = "pharmacies.html";
-        aAdmin.setAttribute("data-ph-role", "admin");
-        aAdmin.style.cssText = "font-weight: bold; background: #0f766e; color: white;";
-        aAdmin.textContent = "🏥 إدارة الصيدليات وجلسات الواتساب";
-        sb.appendChild(aAdmin);
-      }
-    });
-
-    document.querySelectorAll('a[href="pharmacist-replies.html"], a[href="addph.html"][data-ph-role="pharmacist"]').forEach((el) => {
-      el.style.setProperty("display", isPharmacist ? "block" : "none", "important");
-    });
-
-    document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
-      el.style.setProperty("display", isAdmin ? "block" : "none", "important");
-    });
-  })();
-</script>
-
-
-<script>
-  (async function ensureAllSidebarButtonsAndRoles() {
-    const ADMIN_PHONE = "249128514785";
-    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
-    const tail9 = (v) => {
-      const d = digitsOnly(v);
-      return d.length > 9 ? d.slice(-9) : d;
-    };
-
-    const digits = digitsOnly(localStorage.getItem("userPhone") || "");
-    const isAdmin = Boolean(digits) && (
-      digits === ADMIN_PHONE ||
-      (tail9(digits).length === 9 && tail9(digits) === tail9(ADMIN_PHONE))
-    );
-
-    let isPharmacist = localStorage.getItem("accountType") === "pharmacist";
-    let phName = String(localStorage.getItem("pharmacyName") || "").trim();
-
-    if (digits && typeof db !== "undefined" && db) {
-      try {
-        const dSnap = await db.collection("pharmacies").doc(digits).get();
-        if (dSnap.exists) {
-          const d = dSnap.data() || {};
-          isPharmacist = true;
-          phName = String(d.name || d.pharmacyName || phName || "").trim();
-        }
-        if (!isPharmacist) {
-          const qSnap = await db.collection("pharmacies").where("phone", "==", digits).limit(1).get();
-          if (!qSnap.empty) {
-            const d = qSnap.docs[0].data() || {};
-            isPharmacist = true;
-            phName = String(d.name || d.pharmacyName || phName || "").trim();
-          }
-        }
-      } catch (_) {}
-    }
-
-    if (isPharmacist) localStorage.setItem("accountType", "pharmacist");
-    if (phName) localStorage.setItem("pharmacyName", phName);
-
-    const sessionEl = document.getElementById("sessionInfo");
-    if (sessionEl) {
-      sessionEl.textContent = (isPharmacist && phName) ? phName : (digits || "غير مسجل");
-    }
-
-    const menuItems = [
-      { href: "profile.html", label: "⚙️ تعديل الملف الشخصي والموقع", bg: "#495057", role: "all" },
-      { href: "index.html", label: "💊 صفحة الاستعلام عن دواء", bg: "#495057", role: "all" },
-      { href: "history.html", label: "📜 الأسئلة السابقة", bg: "#0284c7", role: "all" },
-      { href: "notifications.html", label: "🔔 الإشعارات", bg: "#475569", role: "all" },
-      { href: "daway.html", label: "📱 تحميل تطبيق دواي السودان", bg: "#495057", role: "all" },
-      { href: "pharmacist-replies.html", label: "📩 الرد على الأسئلة الواردة", bg: "#0369a1", role: "pharmacist" },
-      { href: "addph.html", label: "✏️ تعديل بيانات الصيدلية", bg: "#0f766e", role: "pharmacist" },
-      { href: "pharmacies.html", label: "🏥 إدارة الصيدليات وجلسات الواتساب", bg: "#0f766e", role: "admin" }
-    ];
-
-    const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
-    sidebars.forEach((sb) => {
-      const prevContainer = sb.querySelector("#previousQuestionsContainer");
-      menuItems.forEach((item) => {
-        let link = sb.querySelector('a[href="' + item.href + '"]');
-        if (!link) {
-          link = document.createElement("a");
-          link.href = item.href;
-          link.textContent = item.label;
-          link.style.cssText = "font-weight: bold; background: " + item.bg + "; color: white;";
-          if (item.href === "pharmacies.html") {
-            link.id = "adminPharmaciesLink";
-          }
-          if (prevContainer) {
-            sb.insertBefore(link, prevContainer);
-          } else {
-            sb.appendChild(link);
-          }
-        }
-        link.setAttribute("data-menu-role", item.role);
-
-        if (item.role === "admin") {
-          link.style.setProperty("display", isAdmin ? "block" : "none", "important");
-        } else if (item.role === "pharmacist") {
-          link.style.setProperty("display", (isPharmacist || isAdmin) ? "block" : "none", "important");
-        } else {
-          link.style.setProperty("display", "block", "important");
-        }
-      });
-    });
-
-    document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
-      el.style.setProperty("display", isAdmin ? "block" : "none", "important");
-    });
-  })();
-</script>
-
->>>>>>> 71f9fe91870d840d5a90495e44a97325a0d48024
 </body>
 </html>
