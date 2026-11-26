@@ -4,9 +4,12 @@
   "description": "Netlify Function with Firebase Client and Telegram dependencies.",
   "main": "node.js",
   "dependencies": {
-    "firebase": "^9.0.0",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "express": "^5.3.0",
+    "firebase": "^9.23.0",
     "firebase-admin": "^11.10.0",
     "node-fetch": "^2.6.7",
+    "pino": "^10.4.0",
     "qrcode": "^1.5.4",
     "telegraf": "^4.12.2"
   },
