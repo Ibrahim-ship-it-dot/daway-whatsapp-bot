@@ -1,9 +1,6 @@
 // PWA: تسجيل Service Worker
-// يجب إضافة هذا الجزء في بداية ملف script.js
-// ===========================================
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        // يتم التسجيل على المسار /service-worker.js
         navigator.serviceWorker.register('/service-worker.js')
             .then(registration => {
                 console.log('ServiceWorker registered successfully with scope: ', registration.scope);
@@ -13,8 +10,7 @@ if ('serviceWorker' in navigator) {
             });
     });
 }
-// NOTE: This config is provided by the environment and is necessary for running the app.
-// **يجب عليك تعديل هذا الكود ليناسب إعدادات مشروع Firebase الخاص بك**
+
 const firebaseConfig = {
     apiKey: "AIzaSyDlEBzVFhJzFkDI4mWnTSEQbUGOYBoVvbI",
     authDomain: "group-2f790.firebaseapp.com",
@@ -26,13 +22,157 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+
+
+function saveQuestionLocally(phone, questionObj) {
+    if (!phone || !questionObj || !questionObj.medicine) return;
+    const key = "savedUserQuestions_" + phone;
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem(key) || "[]"); } catch (_) { list = []; }
+    const idx = list.findIndex(item => (questionObj.id && item.id === questionObj.id) || item.medicine === questionObj.medicine);
+    const merged = {
+        id: questionObj.id || ("local_" + Date.now()),
+        UserPhone: phone,
+        medicine: questionObj.medicine,
+        Status: questionObj.Status || "غير متوفر",
+        createdAt: questionObj.createdAt || new Date().toISOString(),
+        responses: Array.isArray(questionObj.responses) ? questionObj.responses : []
+    };
+    if (idx >= 0) {
+        list[idx] = { ...list[idx], ...merged };
+    } else {
+        list.unshift(merged);
+    }
+    localStorage.setItem(key, JSON.stringify(list.slice(0, 40)));
+}
+
+function getLocalSavedQuestions(phone) {
+    if (!phone) return [];
+    try {
+        return JSON.parse(localStorage.getItem("savedUserQuestions_" + phone) || "[]");
+    } catch (_) {
+        return [];
+    }
+}
+
+
+function applyResponsesDirectlyToCards(responses, queryId = "") {
+    if (!Array.isArray(responses) || !responses.length) return false;
+    const container = document.getElementById("pharmaciesContainer");
+    if (!container) return false;
+    const cards = Array.from(container.querySelectorAll(".pharmacy"));
+    if (!cards.length) return false;
+
+    const toDigits = (v) => String(v || "").replace(/\D/g, "");
+    const toTail9 = (v) => {
+        const d = toDigits(v);
+        return d.length > 9 ? d.slice(-9) : d;
+    };
+    const samePhone = (a, b) => {
+        const da = toDigits(a);
+        const db = toDigits(b);
+        if (!da || !db) return false;
+        if (da === db) return true;
+        const ta = toTail9(da);
+        const tb = toTail9(db);
+        return ta.length >= 7 && ta === tb;
+    };
+
+    const cardMeta = cards.map((card) => {
+        const cardId = String(card.dataset.id || "").trim();
+        const phoneMatch = (card.textContent || "").match(/رقم الصيدلية[:\s]*([+\d\s-]{7,20})/);
+        const cardPhone = toDigits(phoneMatch ? phoneMatch[1] : "");
+        return { card, cardId, cardPhone };
+    });
+
+    let updatedAny = false;
+
+    responses.forEach((r) => {
+        if (!r || typeof r !== "object") return;
+
+        const rPharmacyId = String(r.pharmacyId || "").trim();
+        const rSessionId = String(r.sessionId || "").trim();
+        const rPharmacyPhone = toDigits(r.pharmacyPhone || "");
+        const rSenderPhone = toDigits(r.senderPhone || r.phone || "");
+
+        let matchedEntry = null;
+
+        // 1. مطابقة مباشرة بمعرّف الصيدلية أو رقم الصيدلية في البطاقة
+        if (!matchedEntry && (rPharmacyId || rPharmacyPhone)) {
+            matchedEntry = cardMeta.find((m) =>
+                (rPharmacyId && (m.cardId === rPharmacyId || samePhone(m.cardId, rPharmacyId))) ||
+                (rPharmacyPhone && (m.cardPhone === rPharmacyPhone || samePhone(m.cardPhone, rPharmacyPhone)))
+            );
+        }
+
+        // 2. مطابقة برقم المرسل / الجلسة (مثلاً رقم جلسة الواتساب لصيدلية دواي)
+        if (!matchedEntry && (rSenderPhone || rSessionId)) {
+            matchedEntry = cardMeta.find((m) =>
+                (rSenderPhone && (m.cardPhone === rSenderPhone || samePhone(m.cardPhone, rSenderPhone) || samePhone(m.cardId, rSenderPhone))) ||
+                (rSessionId && (m.cardId === rSessionId || samePhone(m.cardId, rSessionId) || samePhone(m.cardPhone, rSessionId)))
+            );
+        }
+
+        if (!matchedEntry) return;
+
+        const card = matchedEntry.card;
+        const statusText = resolveDisplayStatus(r, null);
+        const isAvail = statusText === "متوفر";
+        const statusClass = isAvail ? "status-available" : "status-unavailable";
+        const borderClass = isAvail ? "status-available-border" : "status-unavailable-border";
+
+        card.classList.remove("status-pending-border", "status-available-border", "status-unavailable-border");
+        card.classList.add(borderClass);
+
+        const statusSec = card.querySelector(".status-section");
+        if (statusSec) {
+            statusSec.classList.remove("status-pending", "status-available", "status-unavailable");
+            statusSec.classList.add(statusClass);
+            statusSec.innerHTML = `${getStatusIcon(statusText)}<span style="line-height:1.2;">${escapeHtmlText(statusText)}</span>`;
+        }
+
+        const responderPhone = r.senderPhone || r.phone || r.pharmacyPhone || matchedEntry.cardPhone || "";
+        const rawReplyText = r.rawReplyText || r.replyText || r.text || "";
+        const qMeta = r.quotedMessageData || {};
+        const refId = qMeta.askId || qMeta.stanzaId || r.askId || queryId || "";
+
+        let detailsBox = card.querySelector(".live-response-details-box");
+        if (!detailsBox) {
+            detailsBox = document.createElement("div");
+            detailsBox.className = "live-response-details-box";
+            detailsBox.style.cssText = "font-size:12px; margin-top:6px; line-height:1.5; text-align:right; color:#222; background:#f8f9fa; padding:6px 8px; border-radius:6px; max-width:100%; overflow:hidden; overflow-wrap:anywhere; word-break:break-word; box-sizing:border-box;";
+            if (statusSec && statusSec.parentNode) {
+                statusSec.parentNode.appendChild(detailsBox);
+            } else {
+                card.appendChild(detailsBox);
+            }
+        }
+
+        detailsBox.innerHTML =
+            (responderPhone ? `<div><strong>رقم الصيدلية:</strong> ${escapeHtmlText(responderPhone)}</div>` : "") +
+            (rawReplyText ? `<div><strong>الرد:</strong> ${escapeHtmlText(rawReplyText)}</div>` : "") +
+            (refId ? `<div><strong>المرجع:</strong> ${escapeHtmlText(refId)}</div>` : "");
+
+        updatedAny = true;
+    });
+
+    if (updatedAny && typeof lucide !== "undefined" && lucide.createIcons) {
+        lucide.createIcons();
+    }
+    return updatedAny;
+}
+function withTimeout(promise, ms = 3000, label = "operation") {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("انتهت مهلة: " + label)), ms))
+    ]);
+}
+
 let userLocation = { lat: null, lng: null };
 let isLocationAvailable = false;
 let isQueryActive = false;
-
-// =========================================================
-// 💡 وظائف التحكم في الواجهة (Interface Control)
-// =========================================================
+let cachedPharmaciesDocs = null;
+let cachedPharmaciesTime = 0;
 
 function closeSidebar(){ document.getElementById('sidebar').style.width='0'; }
 function closeInfoSidebar(){ document.getElementById('infoSidebar').style.width='0'; }
@@ -43,10 +183,46 @@ function showSessionInfo(phone){
     if(el) el.innerText="رقم الجلسة: "+phone;
 }
 
+function setSendingIndicator(show, customText = "⏳ جاري إظهار الصيدليات وإرسال السؤال لها...") {
+    let banner = document.getElementById('sendingQuestionsBanner');
+    const pharmContainer = document.getElementById('pharmaciesContainer');
+
+    if (!banner && pharmContainer && pharmContainer.parentNode) {
+        banner = document.createElement('div');
+        banner.id = 'sendingQuestionsBanner';
+        banner.style.cssText = [
+            "max-width:600px",
+            "margin:10px auto",
+            "padding:9px 14px",
+            "border-radius:8px",
+            "background:#e0f7fa",
+            "color:#006064",
+            "border:1px solid #80deea",
+            "font-size:13px",
+            "font-weight:700",
+            "text-align:center",
+            "box-sizing:border-box"
+        ].join(";");
+        pharmContainer.parentNode.insertBefore(banner, pharmContainer);
+    }
+
+    if (!banner) return;
+    if (show) {
+        banner.textContent = customText;
+        banner.classList.remove('hidden');
+        banner.style.display = 'block';
+    } else {
+        banner.classList.add('hidden');
+        banner.style.display = 'none';
+    }
+}
+
 function getStatusIcon(statusText) {
-    if (statusText === "متوفر") return `<i data-lucide="check-circle" style="width:20px; height:20px;"></i>`;
-    if (statusText === "غير متوفر") return `<i data-lucide="x-circle" style="width:20px; height:20px;"></i>`;
-    return `<i data-lucide="hourglass" style="width:20px; height:20px;"></i>`;
+    if (statusText === "متوفر") return `<i data-lucide="check-circle" style="width:15px; height:15px; flex-shrink:0;"></i>`;
+    if (statusText === "غير متوفر" || statusText === "غير متصل" || statusText === "متوقف") {
+        return `<i data-lucide="x-circle" style="width:15px; height:15px; flex-shrink:0;"></i>`;
+    }
+    return `<i data-lucide="hourglass" style="width:15px; height:15px; flex-shrink:0;"></i>`;
 }
 
 function normalizePhoneDigits(val) {
@@ -74,20 +250,33 @@ function findPharmacyResponse(responses, pharmacy) {
     );
 }
 
-function resolveDisplayStatus(response) {
-    if (!response) return "جاري الرد";
-    const candidate = String(
-        response.status || response.rawReplyText || response.replyText || response.text || ""
-    ).trim();
-    if (!candidate) return "جاري الرد";
-    const lower = candidate.toLowerCase();
-    if (lower.includes("غير متوفر") || lower === "لا" || lower.includes("ما متوفر") || lower === "no") {
-        return "غير متوفر";
+function resolveDisplayStatus(response, sessionMeta = null) {
+    if (response) {
+        const candidate = String(
+            response.status || response.rawReplyText || response.replyText || response.text || ""
+        ).trim();
+        if (candidate) {
+            const lower = candidate.toLowerCase();
+            if (lower.includes("غير متوفر") || lower === "لا" || lower.includes("ما متوفر") || lower === "no") {
+                return "غير متوفر";
+            }
+            if (lower.includes("متوفر") || lower === "نعم" || lower.includes("موجود") || lower === "yes") {
+                return "متوفر";
+            }
+            return candidate;
+        }
     }
-    if (lower.includes("متوفر") || lower === "نعم" || lower.includes("موجود") || lower === "yes") {
-        return "متوفر";
+
+    if (!sessionMeta) {
+        return "جاري الرد";
     }
-    return candidate;
+    if (!sessionMeta.hasSavedSession) {
+        return "متوقف";
+    }
+    if (!sessionMeta.isWhatsappConnected) {
+        return "غير متصل";
+    }
+    return "جاري الرد";
 }
 
 function escapeHtmlText(str) {
@@ -98,24 +287,62 @@ function escapeHtmlText(str) {
         .replace(/"/g, "&quot;");
 }
 
-// 💡 تحديث: وظيفة showError مع الإخفاء التلقائي
+async function getCachedPharmaciesList(forceRefresh = false) {
+    const now = Date.now();
+    if (!forceRefresh && cachedPharmaciesDocs && (now - cachedPharmaciesTime) < 30000) {
+        return cachedPharmaciesDocs;
+    }
+    try {
+        const snap = await db.collection('pharmacies').get();
+        const list = [];
+        snap.forEach(phDoc => {
+            const d = phDoc.data() || {};
+            d.id = phDoc.id;
+            list.push(d);
+        });
+        console.log("📦 عدد الصيدليات من Firestore (pharmacies):", list.length, list);
+        cachedPharmaciesDocs = list;
+        cachedPharmaciesTime = now;
+        return list;
+    } catch (err) {
+        console.error("🔥 خطأ قراءة pharmacies من Firestore:", err);
+        throw err;
+    }
+}
+
+async function fetchPharmacySessionStatusesMap() {
+    const map = new Map();
+    try {
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 3500);
+        const res = await fetch('/api/pharmacy-sessions', { signal: controller.signal });
+        clearTimeout(tid);
+        if (res.ok) {
+            const data = await res.json();
+            (data.pharmacies || []).forEach(item => {
+                if (item.pharmacyId) map.set(String(item.pharmacyId), item);
+                const digits = normalizePhoneDigits(item.phone);
+                if (digits) map.set(digits, item);
+            });
+        }
+    } catch (_) {}
+    return map;
+}
+
 function showError(title,error){
     console.error("🔥",title,error);
     const box = document.getElementById('errorBox');
     if(box) {
         box.classList.remove('hidden');
-        box.classList.remove('fade-out'); // للتأكد من إزالة فئة الإخفاء السابقة
+        box.classList.remove('fade-out');
         box.innerText = `❌ ${title}:\n${error.message || error.toString()}`;
 
-        // إخفاء تلقائي بعد 5 ثواني (5000ms)
         setTimeout(() => {
-            // إضافة فئة الإخفاء التدريجي (fade-out)
             if(!box.classList.contains('hidden')){
                 box.classList.add('fade-out');
-                // إخفاء العنصر بالكامل بعد انتهاء الانتقال (1000ms)
                 setTimeout(() => {
                     box.classList.add('hidden');
-                    box.classList.remove('fade-out'); // للتجهيز للاستخدام التالي
+                    box.classList.remove('fade-out');
                 }, 1000);
             }
         }, 5000);
@@ -135,9 +362,9 @@ function distance(lat1, lon1, lat2, lon2){
 function toggleAskButton(disabled) {
     const button = document.getElementById('askButton');
     if(!button) return;
-    button.disabled = disabled;
+    button.disabled = Boolean(disabled);
     button.textContent = disabled ? 'جاري العمل...' : 'اسأل الصيدليات';
-    isQueryActive = disabled;
+    isQueryActive = Boolean(disabled);
 }
 
 function toggleSavePhoneButton(disabled) {
@@ -149,6 +376,7 @@ function toggleSavePhoneButton(disabled) {
 
 function displayLocationError() {
     isLocationAvailable = false;
+    setSendingIndicator(false);
     const errorBox = document.getElementById('locationErrorBox');
     const titleEl = document.getElementById('currentQueryTitle');
     const pharmContainer = document.getElementById('pharmaciesContainer');
@@ -158,79 +386,60 @@ function displayLocationError() {
     if(pharmContainer) pharmContainer.innerHTML = '<div class="loading" style="color:var(--status-unavailable);">الرجاء **تفعيل خدمة الموقع (GPS)** أولاً للمتابعة.</div>';
 }
 
-// =========================================================
-// User & Location Management
-// =========================================================
-
 async function getUserLocation() {
     const errorBox = document.getElementById('locationErrorBox');
     const locationIndicator = document.getElementById('locationSourceIndicator');
 
-    // إخفاء رسائل الخطأ والمؤشر في البداية
     if (errorBox) errorBox.classList.add('hidden');
     if (locationIndicator) locationIndicator.classList.add('hidden');
 
     isLocationAvailable = false;
     userLocation = { lat: null, lng: null };
 
-    // 1. محاولة الحصول على الموقع من GPS أولاً
+    const phone = localStorage.getItem('userPhone');
+
+    // محاولة سريعة لجلب الموقع المحفوظ مسبقاً في Firestore إذا لم يكن متاحاً فوراً
+    if (phone) {
+        try {
+            const userDoc = await db.collection('Users').doc(phone).get();
+            if (userDoc.exists && userDoc.data().lat && userDoc.data().lng) {
+                userLocation.lat = userDoc.data().lat;
+                userLocation.lng = userDoc.data().lng;
+                isLocationAvailable = true;
+                if (locationIndicator) {
+                    locationIndicator.innerHTML = '💾 <strong>الموقع المستخدم:</strong> موقعك المحفوظ مسبقاً';
+                    locationIndicator.classList.remove('hidden');
+                }
+            }
+        } catch (_) {}
+    }
+
     try {
         const position = await new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(resolve, reject, {
-                enableHighAccuracy: true, timeout: 5000, maximumAge: 0
+                enableHighAccuracy: true, timeout: 3500, maximumAge: 15000
             });
         });
         userLocation.lat = position.coords.latitude;
         userLocation.lng = position.coords.longitude;
         isLocationAvailable = true;
-        console.log("✅ تم الحصول على الموقع من GPS.");
 
-        // تحديث المؤشر لإعلام المستخدم
         if (locationIndicator) {
             locationIndicator.innerHTML = '🛰️ <strong>الموقع المستخدم:</strong> GPS الحالي (الأكثر دقة)';
             locationIndicator.classList.remove('hidden');
         }
 
-        const phone = localStorage.getItem('userPhone');
         if (phone) {
-            await db.collection('Users').doc(phone).update({ lat: userLocation.lat, lng: userLocation.lng });
+            db.collection('Users').doc(phone).update({ lat: userLocation.lat, lng: userLocation.lng }).catch(() => {});
         }
-        return; // الخروج من الدالة بعد النجاح
+        return;
+    } catch (_) {}
 
-    } catch (gpsError) {
-        console.warn("⚠️ فشل الـ GPS:", gpsError.message);
-
-        // 2. إذا فشل GPS، حاول جلب الموقع المحفوظ يدوياً من Firestore
-        const phone = localStorage.getItem('userPhone');
-        if (phone) {
-            try {
-                const userDoc = await db.collection('Users').doc(phone).get();
-                if (userDoc.exists && userDoc.data().lat && userDoc.data().lng) {
-                    userLocation.lat = userDoc.data().lat;
-                    userLocation.lng = userDoc.data().lng;
-                    isLocationAvailable = true;
-                    console.log("✅ تم استخدام الموقع المحفوظ يدوياً من Firestore.");
-
-                    // تحديث المؤشر لإعلام المستخدم
-                    if (locationIndicator) {
-                        locationIndicator.innerHTML = '💾 <strong>الموقع المستخدم:</strong> موقعك المحفوظ يدوياً';
-                        locationIndicator.classList.remove('hidden');
-                    }
-                    return; // الخروج من الدالة بعد النجاح
-                }
-            } catch (dbError) {
-                console.error("🔥 خطأ في جلب الموقع من Firestore:", dbError);
-            }
-        }
-    }
-
-    // 3. إذا فشل كل شيء، قم بإظهار رسالة الخطأ الرئيسية مع رابط لصفحة التعديل
     if (!isLocationAvailable && window.location.pathname.includes('index.html')) {
-        console.error("🚫 تعذر تحديد الموقع نهائياً.");
         displayLocationError();
-        const errorBox = document.getElementById('locationErrorBox');
-        if (errorBox) {
-            errorBox.innerHTML += '<br><a href="profile.html" style="font-weight:bold; color: #856404; text-decoration: underline;">يمكنك تحديد موقعك يدوياً من هنا.</a>';
+        const errBox = document.getElementById('locationErrorBox');
+        if (errBox) {
+            errBox.innerHTML += '<br><a href="profile.html" style="font-weight:bold; color: #856404; text-decoration: underline;">يمكنك تحديد موقعك يدوياً من هنا.</a>';
         }
     }
 }
@@ -244,7 +453,6 @@ async function savePhone(){
         if(phone.length < 5){ errorEl.innerText="الرجاء إدخال رقم هاتف صحيح!"; toggleSavePhoneButton(false); return; }
 
         await getUserLocation();
-
         localStorage.setItem('userPhone', phone);
 
         const userRef = db.collection('Users').doc(phone);
@@ -256,7 +464,6 @@ async function savePhone(){
         }, { merge: true });
 
         window.location.href = 'index.html';
-
     } catch(err){
         errorEl.innerText = "فشل في حفظ الرقم: " + (err.message || "خطأ غير معروف");
     }
@@ -268,200 +475,268 @@ function logout(){
     window.location.href = 'login.html';
 }
 
-// =========================================================
-// Pharmacy Display & Query Logic
-// =========================================================
-
-async function displayPharmacies(queryId, medicineName, responses){
+function renderPharmaciesListToDOM(pharmaciesRaw, selectedRange, medicineName, responses, queryId, sessionStatusMap = null) {
     const pharmContainer = document.getElementById('pharmaciesContainer');
     const titleEl = document.getElementById('currentQueryTitle');
-    // 🚨 هنا يتم قراءة نطاق البحث من القيمة الحالية في حقل الإدخال
-    const selectedRange = parseFloat(document.getElementById('searchRange').value) || 4;
-
-    if (!isLocationAvailable) {
-        titleEl.classList.add('hidden');
-        return;
-    }
-    document.getElementById('locationErrorBox').classList.add('hidden');
 
     titleEl.textContent = `نتائج البحث عن: ${medicineName} (ضمن نطاق ${selectedRange} كم)`;
     titleEl.classList.remove('hidden');
-    pharmContainer.innerHTML = `<div class="loading">جاري عرض الصيدليات القريبة...</div>`;
 
-    const allPharmaciesSnap = await db.collection('pharmacies').get();
-    let pharmacies = [];
-    allPharmaciesSnap.forEach(phDoc=>{
-        const d = phDoc.data();
-        d.id = phDoc.id;
-        // 🚨 هنا يتم استخدام selectedRange (القيمة الجديدة)
-        d.distance = distance(userLocation.lat, userLocation.lng, d.lat, d.lng);
-        if(d.distance !== null && d.distance <= selectedRange) {
-            pharmacies.push(d);
-        }
-    });
-    pharmacies.sort((a,b)=> (a.distance||0) - (b.distance||0) );
+    let pharmacies = pharmaciesRaw
+        .map(d => ({
+            ...d,
+            distance: distance(userLocation.lat, userLocation.lng, d.lat, d.lng)
+        }))
+        .filter(d => d.distance !== null && d.distance <= selectedRange)
+        .sort((a, b) => (a.distance || 0) - (b.distance || 0));
 
     pharmContainer.innerHTML = "";
 
-    if(pharmacies.length === 0){
+    if (pharmacies.length === 0) {
         pharmContainer.innerHTML = `<div class="loading">لا توجد صيدليات ضمن نطاق ${selectedRange} كم.</div>`;
+        return;
     }
 
-    pharmacies.forEach(p=>{
-        const response = findPharmacyResponse(responses, p);
-        const statusText = resolveDisplayStatus(response);
+    const fragment = document.createDocumentFragment();
 
-        const statusClass = statusText==="متوفر"?"status-available":statusText==="غير متوفر"?"status-unavailable":"status-pending";
-        const borderClass = statusText==="متوفر"?"status-available-border":statusText==="غير متوفر"?"status-unavailable-border":"status-pending-border";
+    pharmacies.forEach(p => {
+        const sessionMeta = sessionStatusMap
+            ? (sessionStatusMap.get(String(p.id)) || sessionStatusMap.get(normalizePhoneDigits(p.phone)) || null)
+            : null;
+
+        const response = findPharmacyResponse(responses, p);
+        const statusText = resolveDisplayStatus(response, sessionMeta);
+
+        const statusClass =
+            statusText === "متوفر"
+                ? "status-available"
+                : (statusText === "غير متوفر" || statusText === "غير متصل" || statusText === "متوقف")
+                ? "status-unavailable"
+                : "status-pending";
+
+        const borderClass =
+            statusText === "متوفر"
+                ? "status-available-border"
+                : (statusText === "غير متوفر" || statusText === "غير متصل" || statusText === "متوقف")
+                ? "status-unavailable-border"
+                : "status-pending-border";
 
         const div = document.createElement('div');
         div.dataset.id = p.id;
+        div.style.overflow = "hidden";
+        div.style.maxWidth = "100%";
+        div.style.boxSizing = "border-box";
+        div.className = `pharmacy ${borderClass}`;
 
-        let mapLink = p.lat && p.lng ? `<a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank" class="pharmacy-map-link"><i data-lucide="map-pin" style="width:14px; height:14px;"></i> عرض الموقع</a>` : "";
+        const mapLink = p.lat && p.lng
+            ? `<a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank" class="pharmacy-map-link"><i data-lucide="map-pin" style="width:14px; height:14px;"></i> عرض الموقع</a>`
+            : "";
 
-        // 🟢 تحديث: إضافة شارة التوصيل الجديدة (متوفر أو غير متوفر)
-        let deliveryInfo = '';
-        if (p.delivery) {
-            deliveryInfo = `<span class="delivery-badge delivery-available" title="توصيل متوفر">
-                <i data-lucide="truck" style="width:18px; height:18px;"></i> توصيل
-            </span>`;
-        } else {
-            deliveryInfo = `<span class="delivery-badge delivery-unavailable" title="لا يوجد توصيل">
-                <i data-lucide="x-circle" style="width:18px; height:18px;"></i>   لا توصيل
-            </span>`;
-        }
+        const deliveryInfo = p.delivery
+            ? `<span class="delivery-badge delivery-available" title="توصيل متوفر"><i data-lucide="truck" style="width:18px; height:18px;"></i> توصيل</span>`
+            : `<span class="delivery-badge delivery-unavailable" title="لا يوجد توصيل"><i data-lucide="x-circle" style="width:18px; height:18px;"></i> لا توصيل</span>`;
 
         let contactButtons = '';
         if (p.phone) {
             const userPhone = localStorage.getItem('userPhone') || 'غير محدد';
             const whatsappMessage = `مرحباً، هل يتوفر لديكم ${medicineName}؟ (أنا أبحث من تطبيق اسأل الصيدلية، ورقم هاتفي: ${userPhone})`;
-
             contactButtons += `<a href="tel:${p.phone}" class="contact-call"><i data-lucide="phone" style="width:16px; height:16px;"></i> اتصل</a>`;
             contactButtons += `<a href="https://wa.me/${p.phone}?text=${encodeURIComponent(whatsappMessage)}" target="_blank" class="contact-whatsapp"><i data-lucide="message-square" style="width:16px; height:16px;"></i> واتساب</a>`;
         }
 
         const responderPhone = (response && (response.senderPhone || response.phone || response.pharmacyPhone)) || p.phone || "";
         const rawReplyText = response && (response.rawReplyText || response.replyText || response.text || "");
-        const quotedText =
-            (response && response.quotedMessageData && response.quotedMessageData.quotedText) ||
-            (response && response.quotedText) ||
-            "";
+        const qMeta = (response && response.quotedMessageData) || {};
+        const referenceId = qMeta.askId || qMeta.stanzaId || (response && response.askId) || queryId || "";
 
         const replyDetailsHTML = response
-            ? `<div style="font-size:12px; margin-top:6px; line-height:1.5; text-align:right; color:#222; background:#f8f9fa; padding:6px 8px; border-radius:6px;">
+            ? `<div style="font-size:12px; margin-top:6px; line-height:1.5; text-align:right; color:#222; background:#f8f9fa; padding:6px 8px; border-radius:6px; max-width:100%; overflow:hidden; overflow-wrap:anywhere; word-break:break-word; box-sizing:border-box;">
                 ${responderPhone ? `<div><strong>رقم الصيدلية:</strong> ${escapeHtmlText(responderPhone)}</div>` : ""}
                 ${rawReplyText && rawReplyText !== statusText ? `<div><strong>الرد:</strong> ${escapeHtmlText(rawReplyText)}</div>` : ""}
-                ${quotedText ? `<div><strong>مقتبس:</strong> ${escapeHtmlText(quotedText)}</div>` : ""}
+                ${referenceId ? `<div><strong>المرجع:</strong> ${escapeHtmlText(referenceId)}</div>` : ""}
                </div>`
             : "";
 
-        let statusSectionHTML = '';
-        if((p.chatId && p.chatId.trim() !== '') || p.phone || response) {
-            statusSectionHTML = `
-                <div>
-                    <div class="status-section ${statusClass}">${getStatusIcon(statusText)}<span>${escapeHtmlText(statusText)}</span></div>
-                    ${replyDetailsHTML}
-                </div>
-            `;
-            div.className=`pharmacy ${borderClass}`;
-        } else {
-            div.className='pharmacy';
-            statusSectionHTML = `<div style="font-size: 13px; color: #999; text-align: center; min-width: 110px;">(لا تتلقى استعلامات)</div>`;
-        }
+        const statusSectionHTML = `
+            <div>
+                <div class="status-section ${statusClass}" style="font-size:11.5px; padding:5px 8px; gap:4px; white-space:nowrap; max-width:115px;">${getStatusIcon(statusText)}<span style="line-height:1.2;">${escapeHtmlText(statusText)}</span></div>
+                ${replyDetailsHTML}
+            </div>
+        `;
 
         const distanceText = p.distance !== null ? `${p.distance.toFixed(2)} كم` : 'غير محدد';
 
-        div.innerHTML=`
-            <div class="pharmacy-info">
-                <strong>${p.name || 'صيدلية مجهولة'}</strong>
+        div.innerHTML = `
+            <div class="pharmacy-info" style="min-width:0; max-width:100%; overflow:hidden; overflow-wrap:anywhere; word-break:break-word;">
+                <strong>${escapeHtmlText(p.name || 'صيدلية مجهولة')}</strong>
                 <small>المسافة: <span style="font-weight: bold; color: var(--secondary-color);">${distanceText}</span></small>
                 ${p.phone ? `<small>رقم الصيدلية: <span style="font-weight: bold;">${escapeHtmlText(p.phone)}</span></small>` : ""}
                 <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
                     ${mapLink}
-                    ${deliveryInfo} </div>
+                    ${deliveryInfo}
+                </div>
                 <div class="contact-buttons-container">${contactButtons}</div>
             </div>
             ${statusSectionHTML}
         `;
-        pharmContainer.appendChild(div);
+        fragment.appendChild(div);
     });
 
-    lucide.createIcons();
+    pharmContainer.appendChild(fragment);
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
 }
 
-async function askPharmacy(medicine, phone){
-    const searchRange = parseFloat(document.getElementById('searchRange').value) || 4;
+async function displayPharmacies(queryId, medicineName, responses){
+    const pharmContainer = document.getElementById('pharmaciesContainer');
+    const titleEl = document.getElementById('currentQueryTitle');
+    const selectedRange = parseFloat(document.getElementById('searchRange').value) || 4;
+
+    if (!isLocationAvailable) {
+        titleEl.classList.add('hidden');
+        setSendingIndicator(false);
+        return;
+    }
+    document.getElementById('locationErrorBox').classList.add('hidden');
+
+    // إظهار الصيدليات فوراً من الكاش أو Firestore بدون انتظار طويل
+    const pharmaciesRaw = await getCachedPharmaciesList(false);
+    renderPharmaciesListToDOM(pharmaciesRaw, selectedRange, medicineName, responses, queryId, null);
+
+    // تحديث حالات الاتصال من السيرفر في الخلفية وإعادة الرسم بدون إبطاء العرض الأولي
+    fetchPharmacySessionStatusesMap().then(sessionStatusMap => {
+        if (sessionStatusMap && sessionStatusMap.size > 0) {
+            renderPharmaciesListToDOM(pharmaciesRaw, selectedRange, medicineName, responses, queryId, sessionStatusMap);
+        }
+    }).catch(() => {});
+}
+
+async function askPharmacy(medicine, phone) {
+    const searchRangeEl = document.getElementById('searchRange');
+    const selectedRange = (searchRangeEl ? parseFloat(searchRangeEl.value) : parseFloat(new URLSearchParams(window.location.search).get('range'))) || 4;
+    const nowIso = new Date().toISOString();
+
+    // 1. حفظ السؤال مبدئياً في Firestore و localStorage حتى لو رفضت الصيدليات أو فشل الإرسال
+    let askId = "ask_" + Date.now();
+    const initialDoc = {
+        UserPhone: phone,
+        medicine: medicine,
+        Status: "قيد الانتظار",
+        range: selectedRange,
+        lat: userLocation?.lat || null,
+        lng: userLocation?.lng || null,
+        responses: [],
+        createdAt: nowIso,
+        updatedAt: nowIso
+    };
 
     try {
-        await db.collection('Users').doc(phone).update({ lat: userLocation.lat, lng: userLocation.lng });
+        if (typeof db !== "undefined" && db) {
+            const addedRef = await db.collection('AskPharmacy').add(initialDoc);
+            askId = addedRef.id;
+        }
+    } catch (fsErr) {
+        console.warn("⚠️ تعذر الحفظ الأولي في Firestore، تم الحفظ محلياً:", fsErr.message);
+    }
 
-        const qRef = await db.collection('AskPharmacy').add({
-            medicine,
-            UserPhone:phone,
-            Status:"جاري الرد",
-            createdAt:firebase.firestore.FieldValue.serverTimestamp(),
-            responses:[],
-            searchRange: searchRange
-        });
-        const queryId = qRef.id;
+    saveQuestionLocally(phone, { id: askId, ...initialDoc });
+    if (typeof renderPreviousQuestions === "function") {
+        renderPreviousQuestions().catch(() => {});
+    }
 
-        await displayPharmacies(queryId, medicine, []);
+    await displayPharmacies(askId, medicine, []);
 
-        await fetch('https://daway.netlify.app/.netlify/functions/node', {
-            method:'POST',
-            headers:{ 'Content-Type':'application/json' },
+    try {
+        const res = await fetch('/api/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                medicine, askId:queryId, userPhone:phone,
-                lat:userLocation.lat, lng:userLocation.lng, range: searchRange
+                medicine,
+                userPhone: phone,
+                askId,
+                lat: userLocation?.lat || null,
+                lng: userLocation?.lng || null,
+                range: selectedRange
             })
         });
+        const data = await res.json().catch(() => ({}));
 
-        await renderPreviousQuestions();
-    } catch(err){ showError("فشل في إرسال الاستعلام", err); }
+        // إذا لم تُرسل لأي صيدلية أو رُفضت كلها، نحفظ الحالة كـ "غير متوفر" مع إبقاء السؤال في السجل
+        if (!res.ok || !data.ok || Number(data.sentCount || 0) === 0) {
+            const rejectedStatus = "غير متوفر";
+            saveQuestionLocally(phone, { id: askId, medicine, Status: rejectedStatus, createdAt: nowIso });
+            if (typeof db !== "undefined" && db && !askId.startsWith("ask_")) {
+                await db.collection('AskPharmacy').doc(askId).set(
+                    { Status: rejectedStatus, updatedAt: new Date().toISOString() },
+                    { merge: true }
+                ).catch(() => {});
+            }
+        }
+    } catch (netErr) {
+        saveQuestionLocally(phone, { id: askId, medicine, Status: "غير متوفر", createdAt: nowIso });
+    } finally {
+        setSendingIndicator(false);
+        if (typeof renderPreviousQuestions === "function") {
+            renderPreviousQuestions().catch(() => {});
+        }
+    }
 }
 
 async function checkPreviousQuestionAndAsk(){
     if(isQueryActive) return;
     toggleAskButton(true);
+    setSendingIndicator(true, "⏳ جاري إظهار الصيدليات وإرسال السؤال لها...");
 
-    const phone = localStorage.getItem('userPhone');
-    const medicine = document.getElementById('medicineInput').value.trim();
-    if(!phone || medicine === ""){
-        showError("خطأ", {message: !phone ? "يرجى تسجيل الدخول أولاً!" : "الرجاء كتابة اسم الدواء!"});
+    try {
+        const phone = localStorage.getItem('userPhone');
+        const medicineEl = document.getElementById('medicineInput');
+        const medicine = (medicineEl ? medicineEl.value : new URLSearchParams(window.location.search).get('medicine') || "").trim();
+
+        if(!phone || medicine === ""){
+            setSendingIndicator(false);
+            showError("خطأ", {message: !phone ? "يرجى تسجيل الدخول أولاً!" : "الرجاء كتابة اسم الدواء!"});
+            return;
+        }
+
+        // جلب الموقع بسرعة بدون تعطيل الصفحة
+        await getUserLocation().catch(() => {});
+
+        // إظهار الصيدليات فوراً قبل أي استعلامات إضافية
+        await displayPharmacies("pending_" + Date.now(), medicine, []);
+
+        // فحص سريع للأسئلة السابقة بدون Composite Index معقد
+        let matchedPrevDoc = null;
+        try {
+            const prevSnap = await withTimeout(
+                db.collection('AskPharmacy').where('UserPhone', '==', phone).limit(15).get(),
+                2500,
+                "previousQueries"
+            );
+            prevSnap.forEach(doc => {
+                const d = doc.data() || {};
+                if (String(d.medicine || "").trim() === medicine && !matchedPrevDoc) {
+                    matchedPrevDoc = doc;
+                }
+            });
+        } catch (_) {}
+
+        if (matchedPrevDoc) {
+            const queryId = matchedPrevDoc.id;
+            const medicineName = matchedPrevDoc.data().medicine;
+            await loadPreviousResponses(queryId, medicineName, true);
+            setSendingIndicator(false);
+        } else {
+            await askPharmacy(medicine, phone);
+        }
+    } catch (err) {
+        setSendingIndicator(false);
+        showError("حدث خطأ أثناء تنفيذ السؤال", err);
+    } finally {
         toggleAskButton(false);
-        return;
     }
-
-    await getUserLocation();
-    if (!isLocationAvailable) {
-        toggleAskButton(false);
-        return;
-    }
-
-    // 💡 التحقق من وجود سؤال سابق مطابق للدواء (للمستخدم الحالي فقط)
-    const previousQuerySnap = await db.collection('AskPharmacy')
-        .where('UserPhone', '==', phone)
-        .where('medicine', '==', medicine)
-        .orderBy('createdAt', 'desc')
-        .limit(1)
-        .get();
-
-    if (!previousQuerySnap.empty) {
-        const doc = previousQuerySnap.docs[0];
-        const queryId = doc.id;
-        const medicineName = doc.data().medicine;
-
-        console.log(`✅ تم العثور على سؤال سابق للدواء: ${medicineName}. جاري جلب الردود.`);
-        await loadPreviousResponses(queryId, medicineName, true);
-
-    } else {
-        await askPharmacy(medicine, phone);
-    }
-
-    toggleAskButton(false);
 }
 
-// 🚨 التعديل المطلوب: ملء حقل الإدخال باسم الدواء
 async function loadPreviousResponses(queryId, medicineName, fromMainQuery = false){
     if(isQueryActive && !fromMainQuery) return;
 
@@ -469,6 +744,7 @@ async function loadPreviousResponses(queryId, medicineName, fromMainQuery = fals
         toggleAskButton(true);
         closeSidebar();
         closeInfoSidebar();
+        setSendingIndicator(true, "⏳ جاري إظهار الصيدليات...");
     }
 
     try {
@@ -476,19 +752,20 @@ async function loadPreviousResponses(queryId, medicineName, fromMainQuery = fals
         if(!queryDoc.exists){ throw new Error("الاستعلام غير موجود!"); }
 
         const d = queryDoc.data();
-
-        // 🟢 التعديل الجديد: ملء خانة الدواء باسم الدواء السابق
         document.getElementById('medicineInput').value = medicineName;
 
-        await getUserLocation();
+        if (!isLocationAvailable) {
+            await getUserLocation();
+        }
         if (!isLocationAvailable) {
             if (!fromMainQuery) toggleAskButton(false);
             return;
         }
 
         await displayPharmacies(queryId, medicineName, d.responses || []);
-
+        setSendingIndicator(false);
     } catch(err){
+        setSendingIndicator(false);
         showError(`فشل في جلب الردود`, err);
     } finally {
         if (!fromMainQuery) {
@@ -538,21 +815,35 @@ async function syncResponses(){
     const phone = localStorage.getItem('userPhone');
     if(!phone) return;
 
-    db.collection('AskPharmacy').where('UserPhone','==',phone).orderBy('createdAt','desc').limit(1)
+    db.collection('AskPharmacy').where('UserPhone','==',phone)
         .onSnapshot(async snapshot=>{
             if(snapshot.empty) return;
 
-            const latestQueryDoc = snapshot.docs[0];
-            const latestQuery = latestQueryDoc.data();
-            const queryId = latestQueryDoc.id;
-
-            const currentTitleText = document.getElementById('currentQueryTitle')?.textContent;
-            if (currentTitleText && currentTitleText.includes(latestQuery.medicine) && !isQueryActive && isLocationAvailable) {
-                if(latestQuery.searchRange) {
-                    document.getElementById('searchRange').value = latestQuery.searchRange.toString();
+            let latestDoc = null;
+            snapshot.forEach(doc => {
+                const d = doc.data() || {};
+                const t = d.updatedAt || (d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : String(d.createdAt || ""));
+                const prevT = latestDoc ? (latestDoc.data.updatedAt || (latestDoc.data.createdAt && latestDoc.data.createdAt.toDate ? latestDoc.data.createdAt.toDate().toISOString() : String(latestDoc.data.createdAt || ""))) : "";
+                if (!latestDoc || t >= prevT) {
+                    latestDoc = { id: doc.id, data: d };
                 }
-                await displayPharmacies(queryId, latestQuery.medicine, latestQuery.responses);
-                renderPreviousQuestions();
+            });
+
+            if (!latestDoc) return;
+            const latestQuery = latestDoc.data;
+            const queryId = latestDoc.id;
+            const responses = Array.isArray(latestQuery.responses) ? latestQuery.responses : [];
+
+            if (responses.length > 0) {
+                applyResponsesDirectlyToCards(responses, queryId);
+            }
+
+            const currentTitleText = document.getElementById('currentQueryTitle')?.textContent || "";
+            if (latestQuery.medicine && (!currentTitleText || currentTitleText.includes(latestQuery.medicine)) && !isQueryActive) {
+                if (typeof displayPharmacies === "function") {
+                    await displayPharmacies(queryId, latestQuery.medicine, responses).catch(() => {});
+                    if (responses.length > 0) applyResponsesDirectlyToCards(responses, queryId);
+                }
             }
         });
 }
@@ -561,7 +852,6 @@ async function syncResponses(){
 // 🌐 ثوابت خاصة بصفحة إضافة صيدلية (لـ add_pharmacy.html)
 // =========================================================
 
-// **الإحداثيات الأولية: بحري، السودان**
 const INITIAL_LAT = 15.6322;
 const INITIAL_LNG = 32.5939;
 
@@ -676,7 +966,6 @@ async function locateMe() {
 
 async function saveNewPharmacyToFirestore(name, phone, lat, lng, details, offersDelivery = false) {
     const docRef = db.collection('pharmacies').doc(phone);
-
     const existingSnap = await docRef.get();
 
     const dataToSave = {
@@ -746,7 +1035,6 @@ function submitPharmacy() {
                 } else if (status === 'updated') {
                     successMsg.innerHTML = "📝 **تم تحديث بيانات الصيدلية بنجاح!** (باستخدام نفس الرقم). شكراً لك.";
                 }
-
                 successMsg.classList.remove('hidden');
             }
             document.getElementById('pharmacyName').value = '';
@@ -777,3 +1065,109 @@ function initializeAddPharmacyPage() {
         lucide.createIcons();
     }
 }
+
+
+window.addEventListener("load", async () => {
+    const pharmContainer = document.getElementById("pharmaciesContainer");
+    if (!pharmContainer) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const medParam = (params.get("medicine") || localStorage.getItem("lastSearchMedicine") || "").trim();
+    const rangeParam = (params.get("range") || localStorage.getItem("lastSearchRange") || "").trim();
+    const queryIdParam = (params.get("queryId") || params.get("askId") || "").trim();
+
+    const medInput = document.getElementById("medicineInput");
+    if (medInput && medParam && !medInput.value) medInput.value = medParam;
+    const rangeInput = document.getElementById("searchRange");
+    if (rangeInput && rangeParam) rangeInput.value = rangeParam;
+
+    if (medParam || queryIdParam) {
+        await getUserLocation().catch(() => {});
+        if (queryIdParam) {
+            await loadPreviousResponses(queryIdParam, medParam || "دواء", true);
+        } else {
+            await checkPreviousQuestionAndAsk();
+        }
+    }
+});
+
+
+function showIncomingReplyToast(notif) {
+    if (!notif || typeof document === "undefined") return;
+    const statusStr = String(notif.status || notif.rawReplyText || "رد جديد");
+    const isAvail = statusStr.includes("متوفر") && !statusStr.includes("غير");
+
+    let toast = document.getElementById("liveReplyNotificationToast");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "liveReplyNotificationToast";
+        toast.style.cssText = [
+            "position:fixed",
+            "top:14px",
+            "left:14px",
+            "right:14px",
+            "max-width:520px",
+            "margin:0 auto",
+            "z-index:10000",
+            "background:#ffffff",
+            "color:#111827",
+            "border-radius:12px",
+            "padding:12px 14px",
+            "box-shadow:0 8px 24px rgba(0,0,0,0.18)",
+            "display:flex",
+            "align-items:center",
+            "justify-content:space-between",
+            "gap:10px",
+            "font-family:Cairo,sans-serif"
+        ].join(";");
+        document.body.appendChild(toast);
+    }
+
+    toast.style.borderRight = "5px solid " + (isAvail ? "#2e7d32" : "#c62828");
+    toast.innerHTML = `
+        <div style="text-align:right; font-size:13px; line-height:1.45;">
+            <div><strong>🔔 رد جديد من ${escapeHtmlText(notif.pharmacyName || "صيدلية")}</strong></div>
+            <div>الحالة: <strong style="color:${isAvail ? "#1b5e20" : "#b71c1c"}">${escapeHtmlText(statusStr)}</strong>${notif.medicine ? " — " + escapeHtmlText(notif.medicine) : ""}</div>
+        </div>
+        <a href="notifications.html" style="background:#00bcd4; color:#fff; text-decoration:none; padding:6px 10px; border-radius:8px; font-size:12px; font-weight:700; white-space:nowrap;">عرض الإشعارات</a>
+    `;
+    toast.style.display = "flex";
+
+    clearTimeout(window.__replyToastTimer);
+    window.__replyToastTimer = setTimeout(() => {
+        if (toast) toast.style.display = "none";
+    }, 7000);
+}
+
+let seenNotifIds = new Set();
+let isFirstNotifSnapshot = true;
+
+function initAccountNotificationsListener() {
+    const phone = localStorage.getItem("userPhone");
+    if (!phone || typeof db === "undefined" || !db) return;
+    const myTail = normalizePhoneDigits(phone).slice(-9);
+
+    db.collection("notifications").onSnapshot((snap) => {
+        if (isFirstNotifSnapshot) {
+            snap.forEach(d => seenNotifIds.add(d.id));
+            isFirstNotifSnapshot = false;
+            return;
+        }
+        snap.docChanges().forEach((change) => {
+            if (change.type === "added" || change.type === "modified") {
+                const d = change.doc.data() || {};
+                const refPhone = d.userPhone || d.recipientPhone || d.uniqueAccountRef || "";
+                const refTail = normalizePhoneDigits(refPhone).slice(-9);
+                const belongsToUser = (myTail.length >= 7 && refTail === myTail) || normalizePhoneDigits(refPhone) === normalizePhoneDigits(phone);
+                if (belongsToUser && !seenNotifIds.has(change.doc.id)) {
+                    seenNotifIds.add(change.doc.id);
+                    showIncomingReplyToast(d);
+                }
+            }
+        });
+    }, () => {});
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+    initAccountNotificationsListener();
+});

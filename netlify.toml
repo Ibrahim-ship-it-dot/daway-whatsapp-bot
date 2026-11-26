@@ -1,4 +1,8 @@
 [build]
+<<<<<<< HEAD
+=======
+  functions = "functions"
+>>>>>>> 71f9fe91870d840d5a90495e44a97325a0d48024
   publish = "."
 
 [[redirects]]
