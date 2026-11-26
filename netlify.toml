@@ -4,5 +4,12 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  to = "https://daway-whatsapp-bot.onrender.com/api/:splat"
   status = 200
+  force = true
+
+[[redirects]]
+  from = "/socket.io/*"
+  to = "https://daway-whatsapp-bot.onrender.com/socket.io/:splat"
+  status = 200
+  force = true
