@@ -28,15 +28,15 @@ h4 { color: var(--text-dark); text-align: center; font-weight: 800; margin-top: 
 /* ---------------------------------- */
 .sidebar-toggle-button {
     position: fixed;
-    top: 15px;
+    top: 9px;
     color: white;
     border: none;
     padding: 10px 15px;
     border-radius: 25px;
     cursor: pointer;
     z-index: 1001;
-    font-size: 14px;
-    width: 130px;
+    font-size: 12px;
+    width: 100px;
     text-align: center;
     box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     transition: background 0.2s, transform 0.2s;
@@ -111,12 +111,13 @@ button:disabled { background: #9E9E9E; cursor: not-allowed; transform: none; box
 #currentQueryTitle { font-size: 1.2em; color: var(--primary-color); text-align: center; margin-bottom: 20px; padding: 12px; background: #e6f7ff; border-radius: 10px; font-weight: 700; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
 .pharmacy {
-    padding: 15px 20px;
+    padding: 12px 14px;
     border-radius: 12px;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     border-top: 5px solid transparent;
     transition: all 0.3s;
@@ -130,19 +131,19 @@ button:disabled { background: #9E9E9E; cursor: not-allowed; transform: none; box
 .pharmacy:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
 
 .pharmacy-info { flex-grow: 1; text-align: right; }
-.pharmacy-info strong { display: block; font-size: 1.3em; color: var(--text-dark); margin-bottom: 2px; font-weight: 700; }
-.pharmacy-info small { color: #6c757d; display: block; font-size: 0.9em; margin-bottom: 5px;}
+.pharmacy-info strong { display: block; font-size: 1.02em; color: var(--text-dark); margin-bottom: 2px; font-weight: 700; }
+.pharmacy-info small { color: #6c757d; display: block; font-size: 0.78em; margin-bottom: 3px; }
 
 .status-section {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 4px;
     font-weight: 700;
-    font-size: 1.0em;
-    padding: 6px 12px;
+    font-size: 0.8em;
+    padding: 5px 9px;
     border-radius: 20px;
-    min-width: 110px;
+    min-width: 90px;
     text-align: center;
     white-space: nowrap;
 }
@@ -152,30 +153,30 @@ button:disabled { background: #9E9E9E; cursor: not-allowed; transform: none; box
 .status-pending { background: #fffbe6; color: var(--status-pending); }
 
 .pharmacy-map-link {
-    font-size: 13px;
+    font-size: 11px;
     color: var(--secondary-color);
     text-decoration: none;
     font-weight: 700;
-    padding: 5px 8px;
+    padding: 3px 7px;
     border: 1px solid var(--secondary-color);
     border-radius: 5px;
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    margin-top: 5px;
+    margin-top: 4px;
 }
 .pharmacy-map-link:hover { background: #e6f0ff; }
 
-.contact-buttons-container { display: flex; gap: 8px; margin-top: 10px; }
+.contact-buttons-container { display: flex; gap: 6px; margin-top: 8px; }
 .contact-buttons-container a {
     text-decoration: none;
-    padding: 8px 10px;
-    border-radius: 8px;
-    font-size: 13px;
+    padding: 5px 8px;
+    border-radius: 7px;
+    font-size: 11px;
     font-weight: bold;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     transition: background 0.2s;
     white-space: nowrap;
 }
@@ -189,12 +190,12 @@ button:disabled { background: #9E9E9E; cursor: not-allowed; transform: none; box
 /* ---------------------------------- */
 .delivery-badge {
     font-weight: bold;
-    font-size: 13px;
+    font-size: 11px;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    margin-right: 10px;
-    padding: 4px 8px;
+    gap: 3px;
+    margin-right: 6px;
+    padding: 3px 6px;
     border-radius: 5px;
     white-space: nowrap;
 }

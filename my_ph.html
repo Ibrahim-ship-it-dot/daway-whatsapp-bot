@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+
+<meta property="og:title" content="اسأل الصيدلية - دواي سودان">
+<meta property="og:description" content="البحث السريع عن الدواء والمستلزمات الطبية من أقرب الصيدليات المتاحة.">
+<meta property="og:image" content="https://botel2.netlify.app/images/daway_sudan_logo.png">
+<meta property="og:url" content="https://botel2.netlify.app">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="اسأل الصيدلية - دواي سودان">
+<meta name="twitter:description" content="البحث السريع عن الدواء والمستلزمات الطبية من أقرب الصيدليات المتاحة.">
+<meta name="twitter:image" content="https://botel2.netlify.app/images/daway_sudan_logo.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل الدخول - اسأل الصيدلية</title>
+<link rel="icon" type="image/png" href="images/daway_sudan_logo.png">
+<link rel="apple-touch-icon" href="images/daway_sudan_logo.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إدارة الصيدلية الخاصة</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="manifest" href="manifest.json">
+
+<style>
+/* تنسيقات أساسية موجودة سابقاً */
+body {
+    font-family: 'Cairo', sans-serif;
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #f8f9fa;
+    direction: rtl;
+}
+h2 { color: #007bff; text-align: center; margin-bottom: 30px; }
+.input-group { margin-bottom: 15px; }
+label { display: block; margin-bottom: 5px; font-weight: bold; color: #495057; }
+input[type="text"], input[type="tel"], input[readonly] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+/* تنسيق حقل القراءة فقط */
+input[readonly] {
+    background-color: #e9ecef; /* لون خلفية رمادي ليدل على عدم قابليته للتعديل */
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+
+#pharmacyList {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: white;
+}
+
+.btn-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+.save-btn, .delete-btn, #backButton, .gps-btn {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+.save-btn { background-color: #28a745; color: white; flex-grow: 1; }
+.save-btn:hover { background-color: #218838; }
+.delete-btn { background-color: #dc3545; color: white; flex-grow: 1; }
+.delete-btn:hover { background-color: #c82333; }
+.gps-btn { background-color: #007bff; color: white; flex-grow: 1; }
+.gps-btn:hover { background-color: #0056b3; }
+#backButton { background-color: #6c757d; color: white; text-decoration: none; text-align: center; }
+#backButton:hover { background-color: #5a6268; }
+
+#message {
+    font-weight: bold;
+    margin-top: 15px;
+    text-align: center;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* تنسيق الخريطة */
+#map {
+    height: 300px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    z-index: 1;
+}
+</style>
+</head>
+<body>
+
+<a href="index.html" id="backButton">العودة للصفحة الرئيسية</a>
+<h2>إدارة الصيدلية الخاصة بك</h2>
+
+<div id="loadingMessage" style="text-align: center; color: #007bff; font-weight: bold;">جاري التحميل...</div>
+
+<div id="pharmacyList"></div>
+
+<p id="message"></p>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+// **تأكد من مطابقة إعدادات Firebase مع ملف script.js**
+const firebaseConfig = {
+    apiKey: "AIzaSyDlEBzVFhJzFkDI4mWnTSEQbUGOYBoVvbI",
+    authDomain: "group-2f790.firebaseapp.com",
+    projectId: "group-2f790",
+    storageBucket: "group-2f790.firebasestorage.app",
+    messagingSenderId: "532610990999",
+    appId: "1:532610990999:web:1ad2bf5149c68774e57ad2"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// إحداثيات بحري (السودان) الافتراضية
+const BAHRI_COORDS = { lat: 15.6393, lng: 32.5539 };
+
+let userPhone = localStorage.getItem('userPhone');
+let map = null; // متغير لحفظ كائن الخريطة
+let marker = null; // متغير لحفظ كائن العلامة
+
+function showMessage(text, isError = false) {
+    const msg = document.getElementById('message');
+    msg.textContent = text;
+    msg.style.color = isError ? '#dc3545' : '#155724';
+    msg.style.backgroundColor = isError ? '#f8d7da' : '#d4edda';
+    msg.style.display = 'block';
+}
+
+function toggleLoading(isLoading) {
+    document.getElementById('loadingMessage').style.display = isLoading ? 'block' : 'none';
+}
+
+function updateInputsFromMarker(lat, lng, isNew) {
+    const latInputId = isNew ? 'new_lat' : 'lat';
+    const lngInputId = isNew ? 'new_lng' : 'lng';
+
+    const latInput = document.getElementById(latInputId);
+    const lngInput = document.getElementById(lngInputId);
+
+    if (latInput) latInput.value = lat.toFixed(6);
+    if (lngInput) lngInput.value = lng.toFixed(6);
+}
+
+function initMap(initialLat, initialLng, isNew) {
+    const mapContainer = document.getElementById('map-container');
+
+    // إنشاء حاوية الخريطة إذا لم تكن موجودة
+    if(!document.getElementById('map')){
+        const mapDiv = document.createElement('div');
+        mapDiv.id = 'map';
+        mapContainer.appendChild(mapDiv);
+    }
+
+    // إزالة الخريطة القديمة قبل إنشاء الجديدة
+    if (map) {
+        map.remove();
+        map = null;
+    }
+
+    const defaultLat = initialLat || BAHRI_COORDS.lat;
+    const defaultLng = initialLng || BAHRI_COORDS.lng;
+
+    map = L.map('map').setView([defaultLat, defaultLng], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    marker = L.marker([defaultLat, defaultLng], {
+        draggable: true
+    }).addTo(map);
+
+    // تحديث حقول الإدخال عند سحب العلامة
+    marker.on('dragend', function(e) {
+        const coords = marker.getLatLng();
+        updateInputsFromMarker(coords.lat, coords.lng, isNew);
+        showMessage('📍 تم تحديث الموقع يدوياً من الخريطة. احفظ التعديلات!', false);
+    });
+
+    // إضافة إمكانية النقر على الخريطة لنقل العلامة
+    map.on('click', function(e) {
+        const coords = e.latlng;
+        marker.setLatLng(coords);
+        updateInputsFromMarker(coords.lat, coords.lng, isNew);
+        showMessage('📍 تم تحديث الموقع يدوياً من الخريطة. احفظ التعديلات!', false);
+    });
+
+    // تحديث الموقع عند تغيير المدخلات يدوياً
+    const latInputId = isNew ? 'new_lat' : 'lat';
+    const lngInputId = isNew ? 'new_lng' : 'lng';
+
+    document.getElementById(latInputId)?.addEventListener('input', updateMarkerFromInputs);
+    document.getElementById(lngInputId)?.addEventListener('input', updateMarkerFromInputs);
+
+    function updateMarkerFromInputs() {
+        const newLat = parseFloat(document.getElementById(latInputId).value);
+        const newLng = parseFloat(document.getElementById(lngInputId).value);
+        if (!isNaN(newLat) && !isNaN(newLng)) {
+            const newCoords = L.latLng(newLat, newLng);
+            marker.setLatLng(newCoords);
+            map.setView(newCoords);
+        }
+    }
+}
+
+async function locateMe(isNew) {
+    showMessage('🛰️ جاري محاولة تحديد الموقع عبر GPS...', false);
+
+    try {
+        const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true, timeout: 7000, maximumAge: 0
+            });
+        });
+
+        const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+
+        // تحديث الخريطة والمدخلات
+        updateInputsFromMarker(coords.lat, coords.lng, isNew);
+        marker.setLatLng([coords.lat, coords.lng]);
+        map.setView([coords.lat, coords.lng], 15); // تكبير على الموقع الدقيق
+
+        showMessage('✅ تم تحديد الموقع بنجاح عبر GPS. احفظ التعديلات!', false);
+
+    } catch (error) {
+        showMessage('❌ فشل تحديد الموقع عبر GPS. يرجى سحب الدبوس الأخضر في الخريطة لتحديد الموقع يدوياً.', true);
+    }
+}
+
+
+// =========================================================
+// 💡 وظائف إدارة الصيدلية الخاصة
+// =========================================================
+
+function renderPharmacyForm(ph, docId, isNew) {
+    const list = document.getElementById('pharmacyList');
+    const lat = ph.lat || BAHRI_COORDS.lat;
+    const lng = ph.lng || BAHRI_COORDS.lng;
+    const phoneValue = ph.phone || userPhone || '';
+    const chatIdValue = ph.chatId || 'خاص بالمبرمج';
+
+    const prefix = isNew ? 'new_' : '';
+    const title = isNew ? 'إضافة صيدلية جديدة' : 'تعديل الصيدلية الخاصة بك';
+
+    // 🟢 حالة مربع اختيار التوصيل
+    const deliveryChecked = ph.delivery ? 'checked' : '';
+    // ---------------------------------
+
+    list.innerHTML = `
+        <div>
+            <h3>${title}</h3>
+            <div class="input-group">
+                <label for="${prefix}name">اسم الصيدلية:</label>
+                <input type="text" id="${prefix}name" value="${ph.name || ''}" placeholder="اسم الصيدلية" required>
+            </div>
+
+            <div class="input-group">
+                <label for="${prefix}phone">رقم هاتف الصيدلية:</label>
+                <input type="tel" id="${prefix}phone" value="${phoneValue}" placeholder="رقم الهاتف" required>
+            </div>
+
+            <div class="input-group">
+                <label for="${prefix}chatId">معرف تيليجرام (Chat ID):</label>
+                <input type="text" id="${prefix}chatId" value="${chatIdValue}" readonly placeholder="معرف البوت/المحادثة الخاص بك" required>
+            </div>
+
+            <p><strong>📍 تحديد موقع الصيدلية (باستخدام الإحداثيات أو الخريطة):</strong></p>
+            <div class="input-group">
+                <label for="${prefix}lat">خط العرض (Latitude):</label>
+                <input type="text" id="${prefix}lat" placeholder="مثل: 15.6393" required value="${lat.toFixed(6)}">
+            </div>
+            <div class="input-group">
+                <label for="${prefix}lng">خط الطول (Longitude):</label>
+                <input type="text" id="${prefix}lng" placeholder="مثل: 32.5539" required value="${lng.toFixed(6)}">
+            </div>
+
+            <div class="input-group" style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
+                <input type="checkbox" id="${prefix}delivery" ${deliveryChecked} style="width: auto; margin: 0; transform: scale(1.5);">
+                <label for="${prefix}delivery" style="margin: 0; font-size: 1.1em;">هل تقدم الصيدلية خدمة **التوصيل**؟</label>
+            </div>
+            <div class="btn-container">
+                <button class="gps-btn" onclick="locateMe(${isNew})">تحديد تلقائي (GPS)</button>
+            </div>
+
+            <div id="map-container"></div>
+
+            <div class="btn-container">
+                <button class="save-btn" onclick="savePharmacy('${docId}')">حفظ التعديلات</button>
+                ${!isNew ? `<button class="delete-btn" onclick="deletePharmacy('${docId}')">حذف الصيدلية</button>` : ''}
+            </div>
+        </div>
+    `;
+    // تهيئة الخريطة
+    initMap(lat, lng, isNew);
+}
+
+
+async function renderAddForm() {
+    const list = document.getElementById('pharmacyList');
+    // إزالة الخريطة إذا كانت موجودة
+    if(map) { map.remove(); map = null; }
+
+    list.innerHTML = `
+        <div style="text-align: center;">
+            <p style="color:#dc3545; font-weight:bold;">لا توجد صيدلية مسجلة بهذا الرقم.</p>
+            <button id="addPharmBtn" style="background:#007bff; color:white; padding:10px 20px; border-radius:5px;">إضافة صيدلية جديدة</button>
+        </div>
+    `;
+
+    document.getElementById('addPharmBtn').onclick = () => {
+        // يتم إنشاء نموذج الإضافة مع إحداثيات بحري الافتراضية
+        renderPharmacyForm({ lat: BAHRI_COORDS.lat, lng: BAHRI_COORDS.lng }, 'null', true);
+    };
+}
+
+
+async function savePharmacy(docId) {
+    const isNew = docId === 'null';
+    const prefix = isNew ? 'new_' : '';
+
+    const nameInput = document.getElementById(prefix + 'name');
+    const chatIdInput = document.getElementById(prefix + 'chatId');
+    const latInput = document.getElementById(prefix + 'lat');
+    const lngInput = document.getElementById(prefix + 'lng');
+    const phoneInput = document.getElementById(prefix + 'phone');
+    // 🟢 الحصول على حالة مربع اختيار التوصيل
+    const deliveryCheckbox = document.getElementById(prefix + 'delivery');
+    // ---------------------------------
+
+    if (!nameInput.value || !chatIdInput.value || !latInput.value || !lngInput.value || !phoneInput.value) {
+        showMessage("الرجاء ملء جميع الحقول!", true);
+        return;
+    }
+
+    const targetPhone = phoneInput.value.trim(); // الرقم المستخدم للحفظ
+    const chatId = chatIdInput.value === 'خاص بالمبرمج' ? '' : chatIdInput.value; // لا نحفظ الجملة
+    // 🟢 تحديد القيمة المنطقية للتوصيل
+    const offersDelivery = deliveryCheckbox ? deliveryCheckbox.checked : false;
+    // ---------------------------------
+
+    try {
+        const data = {
+            name: nameInput.value,
+            phone: targetPhone,
+            chatId: chatId,
+            lat: parseFloat(latInput.value),
+            lng: parseFloat(lngInput.value),
+            delivery: offersDelivery, // 🟢 حفظ حالة التوصيل
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        // 1. معالجة الإضافة الجديدة أو التعديل على نفس الرقم
+        if (isNew || docId === targetPhone) {
+            await db.collection('pharmacies').doc(targetPhone).set(data, { merge: true });
+            showMessage(`✅ تم ${isNew ? 'إضافة' : 'تحديث'} الصيدلية بنجاح!`, false);
+        }
+        // 2. معالجة تغيير الرقم (Doc ID)
+        else {
+            // حذف القديم أولاً (لن يتم هذا إلا إذا كان Doc ID الحالي هو رقم الهاتف القديم)
+            await db.collection('pharmacies').doc(docId).delete();
+            // إضافة الجديد
+            await db.collection('pharmacies').doc(targetPhone).set(data);
+            showMessage("✅ تم تغيير رقم الصيدلية وتحديثها بنجاح!", false);
+        }
+
+        // تحديث رقم الجلسة المحلي بعد أي عملية حفظ ناجحة
+        userPhone = targetPhone;
+        localStorage.setItem('userPhone', userPhone);
+
+        // إعادة تحميل الواجهة بعد الحفظ
+        await loadMyPharmacy();
+
+    } catch (err) {
+        showMessage(`❌ فشل الحفظ: ${err.message}`, true);
+        console.error("خطأ في حفظ الصيدلية:", err);
+    }
+}
+
+async function deletePharmacy(docId) {
+    if (!confirm("هل أنت متأكد من حذف الصيدلية؟ هذا سيؤدي لإزالتها من نتائج البحث.")) return;
+    try {
+        await db.collection('pharmacies').doc(docId).delete();
+        showMessage("✅ تم حذف الصيدلية بنجاح!", false);
+        await loadMyPharmacy();
+    } catch (err) {
+        showMessage(`❌ فشل الحذف: ${err.message}`, true);
+    }
+}
+
+
+async function loadMyPharmacy() {
+    toggleLoading(true);
+    showMessage('');
+
+    if (!userPhone) {
+        document.getElementById('pharmacyList').innerHTML = "<p style='color:red;'>الرجاء تسجيل الدخول أولاً في صفحة <a href='login.html'>الدخول</a>.</p>";
+        toggleLoading(false);
+        return;
+    }
+
+    try {
+        const docSnap = await db.collection('pharmacies').doc(userPhone).get();
+
+        if (!docSnap.exists) {
+            await renderAddForm();
+        } else {
+            const ph = docSnap.data();
+            renderPharmacyForm(ph, docSnap.id, false);
+        }
+
+    } catch (err) {
+        showMessage(`❌ خطأ عند تحميل بيانات الصيدلية: ${err.message}`, true);
+        console.error("خطأ عند تحميل بيانات الصيدلية:", err);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+// عند تحميل الصفحة
+window.onload = async function() {
+    if (!userPhone) {
+        document.getElementById('pharmacyList').innerHTML = "<p style='color:red;'>الرجاء تسجيل الدخول أولاً في صفحة <a href='login.html'>الدخول</a>.</p>";
+        toggleLoading(false);
+        return;
+    }
+
+    // تحميل بيانات الصيدلية الخاصة بالمستخدم
+    loadMyPharmacy();
+};
+</script>
+
+</body>
+</html>

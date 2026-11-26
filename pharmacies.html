@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إدارة الصيدليات وجلسات الواتساب - اسأل الصيدلية</title>
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00bcd4"/>
+<style>
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #f4f7f9;
+    margin: 0;
+    padding: 16px;
+  }
+  .ph-wrap {
+    max-width: 780px;
+    margin: 0 auto;
+  }
+  .ph-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    padding: 14px 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 14px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .ph-topbar h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #0f172a;
+  }
+  .ph-nav-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ph-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 13px;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 13px;
+    color: #fff;
+    background: #495057;
+  }
+  .ph-btn.primary {
+    background: #00bcd4;
+  }
+  .ph-search-box {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 14px;
+    box-sizing: border-box;
+    background: #fff;
+    margin-bottom: 14px;
+  }
+  .ph-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    border-right: 5px solid #0284c7;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ph-card.has-wa {
+    border-right-color: #16a34a;
+  }
+  .ph-card.no-wa {
+    border-right-color: #dc2626;
+  }
+  .ph-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ph-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+  .wa-pill {
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .wa-pill.connected {
+    background: #dcfce7;
+    color: #166534;
+  }
+  .wa-pill.linked-off {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .wa-pill.unlinked {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  .ph-meta {
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.65;
+  }
+  .ph-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .act-edit {
+    background: #0284c7;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 13px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .act-del {
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 13px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .act-wa {
+    background: #00a854;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    padding: 7px 13px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    display: inline-block;
+  }
+  .edit-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 9999;
+  }
+  .edit-modal-card {
+    background: #fff;
+    border-radius: 14px;
+    max-width: 440px;
+    width: 100%;
+    padding: 18px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.22);
+    text-align: right;
+  }
+  .edit-modal-card label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 700;
+    margin: 8px 0 4px;
+    color: #0f172a;
+  }
+  .edit-modal-card input,
+  .edit-modal-card textarea {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 13.5px;
+    box-sizing: border-box;
+  }
+  .ph-empty {
+    background: #fff;
+    padding: 26px;
+    border-radius: 12px;
+    text-align: center;
+    color: #64748b;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+<div class="ph-wrap">
+  <div class="ph-topbar">
+    <div>
+      <h2>🏥 الصيدليات وحالة جلسات الواتساب</h2>
+    </div>
+    <div class="ph-nav-btns">
+      <button type="button" class="ph-btn primary" onclick="refreshPharmaciesAndSessions()">🔄 تحديث الحالة</button>
+      <a href="addph.html" class="ph-btn">➕ إضافة صيدلية</a>
+      <a href="index.html" class="ph-btn">🏠 الرئيسية</a>
+    </div>
+  </div>
+
+  <input type="text" id="phSearchInput" class="ph-search-box" placeholder="ابحث باسم الصيدلية أو اسم الصيدلي أو رقم الهاتف..." oninput="renderPharmaciesList()">
+
+  <div id="pharmaciesListContainer">
+    <div class="ph-empty">⏳ جاري تحميل الصيدليات وفحص جلسات الواتساب...</div>
+  </div>
+</div>
+
+<div id="editPharmacyModal" class="edit-modal-backdrop">
+  <div class="edit-modal-card">
+    <h3 style="margin:0 0 8px;font-size:16px;">✏️ تعديل بيانات الصيدلية</h3>
+    <input type="hidden" id="editDocId">
+
+    <label for="editPhName">اسم الصيدلية</label>
+    <input type="text" id="editPhName">
+
+    <label for="editPhOwner">اسم الصيدلي / المالك</label>
+    <input type="text" id="editPhOwner">
+
+    <label for="editPhPhone">رقم الهاتف / الواتساب (249... من 12 رقماً)</label>
+    <input type="text" id="editPhPhone" maxlength="12">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div>
+        <label for="editPhLat">خط العرض (Lat)</label>
+        <input type="text" id="editPhLat">
+      </div>
+      <div>
+        <label for="editPhLng">خط الطول (Lng)</label>
+        <input type="text" id="editPhLng">
+      </div>
+    </div>
+
+    <label for="editPhDetails">تفاصيل إضافية</label>
+    <textarea id="editPhDetails" rows="2"></textarea>
+
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button type="button" class="act-edit" style="flex:1;" onclick="saveEditedPharmacy()">💾 حفظ التعديل</button>
+      <button type="button" class="ph-btn" style="flex:1;" onclick="closeEditModal()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDlEBzVFhJzFkDI4mWnTSEQbUGOYBoVvbI",
+    authDomain: "group-2f790.firebaseapp.com",
+    projectId: "group-2f790",
+    storageBucket: "group-2f790.firebasestorage.app",
+    messagingSenderId: "532610990999",
+    appId: "1:532610990999:web:1ad2bf5149c68774e57ad2"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  
+  function isAdminPhoneDigits(raw) {
+    const d = cleanDigits(raw);
+    const adminD = "249128514785";
+    const t9 = (x) => (x.length > 9 ? x.slice(-9) : x);
+    return Boolean(d) && (d === adminD || (t9(d).length === 9 && t9(d) === t9(adminD)));
+  }
+
+  async function checkIsAdminAccess() {
+    const curPhone = cleanDigits(localStorage.getItem("userPhone"));
+    if (isAdminPhoneDigits(curPhone)) {
+      localStorage.setItem("isAdmin", "true");
+      localStorage.setItem("userRole", "admin");
+      return true;
+    }
+    return false;
+  }
+
+  let allPharmacies = [];
+  let sessionMapByDigits = new Map();
+
+  function cleanDigits(v) {
+    return String(v || "").replace(/\D/g, "");
+  }
+
+  function getWhatsappSessionBadge(ph) {
+    const digits = cleanDigits(ph.phone || ph.sessionId || ph.id);
+    const matched = sessionMapByDigits.get(digits) || null;
+    if (!matched) {
+      return {
+        linked: false,
+        cardClass: "no-wa",
+        pillClass: "unlinked",
+        label: "❌ لا توجد جلسة واتساب مرتبطة"
+      };
+    }
+    const isOpen = Boolean(
+      matched.connected === true ||
+      matched.status === "open" ||
+      matched.status === "connected" ||
+      matched.autoStatus === "متصل"
+    );
+    if (isOpen) {
+      return {
+        linked: true,
+        cardClass: "has-wa",
+        pillClass: "connected",
+        label: "✅ مرتبطة بجلسة واتساب (متصل)"
+      };
+    }
+    return {
+      linked: true,
+      cardClass: "no-wa",
+      pillClass: "linked-off",
+      label: "⚠️ جلسة واتساب موجودة ولكن غير متصلة (" + (matched.autoStatus || matched.status || "غير متصل") + ")"
+    };
+  }
+
+  async function loadWhatsappSessionsMap() {
+    sessionMapByDigits = new Map();
+    try {
+      const res = await fetch("/api/pharmacy-sessions");
+      const json = await res.json();
+      const list = (json && Array.isArray(json.pharmacies)) ? json.pharmacies : [];
+      list.forEach(item => {
+        [item.sessionId, item.pharmacyId, item.phone].forEach(raw => {
+          const d = cleanDigits(raw);
+          if (d) sessionMapByDigits.set(d, item);
+        });
+      });
+    } catch (_) {}
+  }
+
+  function renderPharmaciesList() {
+    const container = document.getElementById("pharmaciesListContainer");
+    const q = (document.getElementById("phSearchInput")?.value || "").trim().toLowerCase();
+    if (!container) return;
+
+    const filtered = allPharmacies.filter(p => {
+      if (!q) return true;
+      const hay = [p.name, p.ownerName, p.pharmacyOwner, p.phone, p.id, p.details]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.indexOf(q) !== -1;
+    });
+
+    if (!filtered.length) {
+      container.innerHTML = '<div class="ph-empty">لا توجد صيدليات مطابقة للعرض حالياً.</div>';
+      return;
+    }
+
+    container.innerHTML = filtered.map(p => {
+      const wa = getWhatsappSessionBadge(p);
+      const ownerText = p.ownerName || p.pharmacyOwner || "غير محدد";
+      const phoneVal = p.phone || p.id || "";
+      const hasCoords = p.lat !== undefined && p.lng !== undefined && p.lat !== null && p.lng !== null && p.lat !== "" && p.lng !== "";
+      const coordsText = hasCoords ? (Number(p.lat).toFixed(5) + ", " + Number(p.lng).toFixed(5)) : "غير محدد";
+      const safeId = String(p.id).replace(/'/g, "\\'");
+      const linkParams = new URLSearchParams({
+        phone: cleanDigits(phoneVal) || phoneVal,
+        name: p.name || ""
+      });
+
+      return `
+        <div class="ph-card ${wa.cardClass}">
+          <div class="ph-card-head">
+            <div class="ph-title">💊 ${p.name || "صيدلية بدون اسم"}</div>
+            <span class="wa-pill ${wa.pillClass}">${wa.label}</span>
+          </div>
+          <div class="ph-meta">
+            <div><strong>الصيدلي / المالك:</strong> ${ownerText} | <strong>الرقم:</strong> ${phoneVal || "غير متوفر"}</div>
+            <div><strong>الموقع (Lat, Lng):</strong> ${coordsText}</div>
+            ${p.details ? `<div><strong>تفاصيل:</strong> ${p.details}</div>` : ""}
+          </div>
+          <div class="ph-actions">
+            <button type="button" class="act-edit" onclick="openEditModal('${safeId}')">✏️ تعديل</button>
+            <button type="button" class="act-del" onclick="deletePharmacyDoc('${safeId}')">🗑️ حذف</button>
+            <a href="addph.html?${linkParams.toString()}" class="act-wa">📱 إدارة جلسة الواتساب</a>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function openEditModal(docId) {
+    const found = allPharmacies.find(x => String(x.id) === String(docId));
+    if (!found) return;
+    document.getElementById("editDocId").value = found.id;
+    document.getElementById("editPhName").value = found.name || "";
+    document.getElementById("editPhOwner").value = found.ownerName || found.pharmacyOwner || "";
+    document.getElementById("editPhPhone").value = found.phone || found.id || "";
+    document.getElementById("editPhLat").value = (found.lat !== undefined && found.lat !== null) ? found.lat : "";
+    document.getElementById("editPhLng").value = (found.lng !== undefined && found.lng !== null) ? found.lng : "";
+    document.getElementById("editPhDetails").value = found.details || "";
+    document.getElementById("editPharmacyModal").style.display = "flex";
+  }
+
+  function closeEditModal() {
+    document.getElementById("editPharmacyModal").style.display = "none";
+  }
+
+  async function saveEditedPharmacy() {
+    const docId = (document.getElementById("editDocId")?.value || "").trim();
+    const name = (document.getElementById("editPhName")?.value || "").trim();
+    const ownerName = (document.getElementById("editPhOwner")?.value || "").trim();
+    const phoneDigits = cleanDigits(document.getElementById("editPhPhone")?.value || "");
+    const latRaw = (document.getElementById("editPhLat")?.value || "").trim();
+    const lngRaw = (document.getElementById("editPhLng")?.value || "").trim();
+    const details = (document.getElementById("editPhDetails")?.value || "").trim();
+
+    if (!name) {
+      alert("الرجاء إدخال اسم الصيدلية.");
+      return;
+    }
+    if (!/^249\d{9}$/.test(phoneDigits)) {
+      alert("رقم الهاتف يجب أن يبدأ بـ 249 ويتكون من 12 رقماً مثل 249128514785.");
+      return;
+    }
+
+    const payload = {
+      name,
+      ownerName,
+      pharmacyOwner: ownerName,
+      phone: phoneDigits,
+      details,
+      updatedAt: new Date().toISOString()
+    };
+    if (latRaw !== "" && !isNaN(parseFloat(latRaw))) payload.lat = parseFloat(latRaw);
+    if (lngRaw !== "" && !isNaN(parseFloat(lngRaw))) payload.lng = parseFloat(lngRaw);
+
+    try {
+      await db.collection("pharmacies").doc(docId).set(payload, { merge: true });
+      closeEditModal();
+      await refreshPharmaciesAndSessions();
+    } catch (err) {
+      alert("تعذر حفظ التعديل: " + (err.message || err));
+    }
+  }
+
+  async function deletePharmacyDoc(docId) {
+    const found = allPharmacies.find(x => String(x.id) === String(docId));
+    const label = found && found.name ? found.name : docId;
+    if (!confirm("هل أنت متأكد من حذف الصيدلية (" + label + ")؟")) return;
+
+    try {
+      await db.collection("pharmacies").doc(docId).delete();
+      await refreshPharmaciesAndSessions();
+    } catch (err) {
+      alert("تعذر حذف الصيدلية: " + (err.message || err));
+    }
+  }
+
+  async function refreshPharmaciesAndSessions() {
+    await loadWhatsappSessionsMap();
+    try {
+      const snap = await db.collection("pharmacies").get();
+      const list = [];
+      snap.forEach(doc => {
+        list.push({ id: doc.id, ...(doc.data() || {}) });
+      });
+      allPharmacies = list;
+      renderPharmaciesList();
+    } catch (err) {
+      document.getElementById("pharmaciesListContainer").innerHTML =
+        '<div class="ph-empty">تعذر جلب الصيدليات: ' + (err.message || err) + '</div>';
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const isAdmin = await checkIsAdminAccess();
+    if (!isAdmin) {
+      document.querySelector(".ph-wrap").innerHTML =
+        '<div class="ph-empty" style="color:#b91c1c;">⛔ هذه الصفحة خاصة بالأدمن فقط ولا يُسمح بعرضها أو التعديل فيها من هذا الحساب.<div style="margin-top:14px;"><a href="index.html" class="ph-btn primary">🏠 العودة للرئيسية</a></div></div>';
+      return;
+    }
+    refreshPharmaciesAndSessions();
+  });
+</script>
+
+<script>
+  (async function ensureAllSidebarButtonsAndRoles() {
+    const ADMIN_PHONE = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+
+    const digits = digitsOnly(localStorage.getItem("userPhone") || "");
+    const isAdmin = Boolean(digits) && (
+      digits === ADMIN_PHONE ||
+      (tail9(digits).length === 9 && tail9(digits) === tail9(ADMIN_PHONE))
+    );
+
+    let isPharmacist = localStorage.getItem("accountType") === "pharmacist";
+    let phName = String(localStorage.getItem("pharmacyName") || "").trim();
+
+    if (digits && typeof db !== "undefined" && db) {
+      try {
+        const dSnap = await db.collection("pharmacies").doc(digits).get();
+        if (dSnap.exists) {
+          const d = dSnap.data() || {};
+          isPharmacist = true;
+          phName = String(d.name || d.pharmacyName || phName || "").trim();
+        }
+        if (!isPharmacist) {
+          const qSnap = await db.collection("pharmacies").where("phone", "==", digits).limit(1).get();
+          if (!qSnap.empty) {
+            const d = qSnap.docs[0].data() || {};
+            isPharmacist = true;
+            phName = String(d.name || d.pharmacyName || phName || "").trim();
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (isPharmacist) localStorage.setItem("accountType", "pharmacist");
+    if (phName) localStorage.setItem("pharmacyName", phName);
+
+    const sessionEl = document.getElementById("sessionInfo");
+    if (sessionEl) {
+      sessionEl.textContent = (isPharmacist && phName) ? phName : (digits || "غير مسجل");
+    }
+
+    const menuItems = [
+      { href: "profile.html", label: "⚙️ تعديل الملف الشخصي والموقع", bg: "#495057", role: "all" },
+      { href: "index.html", label: "💊 صفحة الاستعلام عن دواء", bg: "#495057", role: "all" },
+      { href: "history.html", label: "📜 الأسئلة السابقة", bg: "#0284c7", role: "all" },
+      { href: "notifications.html", label: "🔔 الإشعارات", bg: "#475569", role: "all" },
+      { href: "daway.html", label: "📱 تحميل تطبيق دواي السودان", bg: "#495057", role: "all" },
+      { href: "pharmacist-replies.html", label: "📩 الرد على الأسئلة الواردة", bg: "#0369a1", role: "pharmacist" },
+      { href: "addph.html", label: "✏️ تعديل بيانات الصيدلية", bg: "#0f766e", role: "pharmacist" },
+      { href: "pharmacies.html", label: "🏥 إدارة الصيدليات وجلسات الواتساب", bg: "#0f766e", role: "admin" }
+    ];
+
+    const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
+    sidebars.forEach((sb) => {
+      const prevContainer = sb.querySelector("#previousQuestionsContainer");
+      menuItems.forEach((item) => {
+        let link = sb.querySelector('a[href="' + item.href + '"]');
+        if (!link) {
+          link = document.createElement("a");
+          link.href = item.href;
+          link.textContent = item.label;
+          link.style.cssText = "font-weight: bold; background: " + item.bg + "; color: white;";
+          if (item.href === "pharmacies.html") {
+            link.id = "adminPharmaciesLink";
+          }
+          if (prevContainer) {
+            sb.insertBefore(link, prevContainer);
+          } else {
+            sb.appendChild(link);
+          }
+        }
+        link.setAttribute("data-menu-role", item.role);
+
+        if (item.role === "admin") {
+          link.style.setProperty("display", isAdmin ? "block" : "none", "important");
+        } else if (item.role === "pharmacist") {
+          link.style.setProperty("display", (isPharmacist || isAdmin) ? "block" : "none", "important");
+        } else {
+          link.style.setProperty("display", "block", "important");
+        }
+      });
+    });
+
+    document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
+      el.style.setProperty("display", isAdmin ? "block" : "none", "important");
+    });
+  })();
+</script>
+
+</body>
+</html>

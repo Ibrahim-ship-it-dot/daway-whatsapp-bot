@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الإشعارات - اسأل الصيدلية</title>
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00bcd4"/>
+<style>
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #f4f7f9;
+    margin: 0;
+    padding: 16px;
+  }
+  .notif-wrapper {
+    max-width: 650px;
+    margin: 0 auto;
+  }
+  .notif-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 14px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .notif-topbar h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #1a202c;
+  }
+  .notif-account-ref {
+    font-size: 12px;
+    color: #00796b;
+    background: #e0f2f1;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+  .notif-back-btn {
+    background: #495057;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 13px;
+  }
+  .notif-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    border-right: 5px solid #00bcd4;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .notif-card.avail {
+    border-right-color: #2e7d32;
+  }
+  .notif-card.unavail {
+    border-right-color: #c62828;
+  }
+  .notif-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .notif-ph-name {
+    font-size: 16px;
+    font-weight: 800;
+    color: #111827;
+  }
+  .notif-badge {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .notif-badge.avail {
+    background: #e8f5e9;
+    color: #1b5e20;
+  }
+  .notif-badge.unavail {
+    background: #ffebee;
+    color: #b71c1c;
+  }
+  .notif-meta {
+    font-size: 13px;
+    color: #4b5563;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .notif-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+  .notif-btn-map {
+    background: #0284c7;
+    color: #fff;
+    text-decoration: none;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .notif-btn-call {
+    background: #16a34a;
+    color: #fff;
+    text-decoration: none;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .notif-empty {
+    background: #fff;
+    padding: 28px 18px;
+    border-radius: 12px;
+    text-align: center;
+    color: #6b7280;
+    font-weight: 700;
+  }
+
+  .notif-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    background: #ffffff;
+    padding: 10px 12px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .notif-filter-btn {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #1e293b;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-family: "Cairo", sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .notif-filter-btn.active {
+    background: #00bcd4;
+    border-color: #00bcd4;
+    color: #ffffff;
+  }
+
+</style>
+</head>
+<body>
+<div class="notif-wrapper">
+  <div class="notif-topbar">
+    <div>
+      <h2>🔔 الإشعارات</h2>
+      <span id="accountRefBadge" class="notif-account-ref">مرجع الحساب: ...</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button type="button" id="markAllReadBtn" onclick="markAllNotificationsRead()" style="background:#00bcd4;color:#fff;border:none;border-radius:8px;padding:8px 13px;font-family:'Cairo',sans-serif;font-weight:700;cursor:pointer;font-size:13px;">✅ تحديد الكل كمقروء</button>
+      <a href="results.html" class="notif-back-btn">🔙 رجوع للنتائج</a>
+    </div>
+  </div>
+  
+  <div class="notif-filters" id="notifFiltersBar">
+    <button type="button" class="notif-filter-btn active" data-filter="all" onclick="setNotifFilter('all')">الكل</button>
+    <button type="button" class="notif-filter-btn" data-filter="available" onclick="setNotifFilter('available')">✅ متوفر</button>
+    <button type="button" class="notif-filter-btn" data-filter="unavailable" onclick="setNotifFilter('unavailable')">❌ غير متوفر</button>
+    <button type="button" class="notif-filter-btn" data-filter="latest" onclick="setNotifFilter('latest')">🕒 رد آخر</button>
+    <button type="button" class="notif-filter-btn" data-filter="unread" onclick="setNotifFilter('unread')">🔴 غير مقروء</button>
+    <button type="button" class="notif-filter-btn" data-filter="read" onclick="setNotifFilter('read')">🟢 مقروء</button>
+  </div>
+
+  <div id="notificationsList">
+    <div class="notif-empty">⏳ جاري تحميل الإشعارات...</div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDlEBzVFhJzFkDI4mWnTSEQbUGOYBoVvbI",
+    authDomain: "group-2f790.firebaseapp.com",
+    projectId: "group-2f790",
+    storageBucket: "group-2f790.firebasestorage.app",
+    messagingSenderId: "532610990999",
+    appId: "1:532610990999:web:1ad2bf5149c68774e57ad2"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  function cleanDigits(v) {
+    return String(v || "").replace(/\D/g, "");
+  }
+
+  function phoneTail9(v) {
+    const d = cleanDigits(v);
+    return d.length > 9 ? d.slice(-9) : d;
+  }
+
+  function formatNotifDate(isoOrDate) {
+    if (!isoOrDate) return "غير محدد";
+    try {
+      const dt = isoOrDate.toDate ? isoOrDate.toDate() : new Date(isoOrDate);
+      if (isNaN(dt.getTime())) return String(isoOrDate);
+      return dt.toLocaleString("ar-SD", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch (_) {
+      return String(isoOrDate);
+    }
+  }
+
+  
+  let currentNotifFilter = "all";
+  let latestLoadedDocs = [];
+  let latestLoadedPhone = "";
+
+  function setNotifFilter(filterKey) {
+    currentNotifFilter = filterKey || "all";
+    document.querySelectorAll("#notifFiltersBar .notif-filter-btn").forEach(btn => {
+      if (btn.getAttribute("data-filter") === currentNotifFilter) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+    renderNotifications(latestLoadedDocs, latestLoadedPhone);
+  }
+
+    
+  async function markAllNotificationsRead() {
+    const phone = localStorage.getItem("userPhone") || "";
+    if (!phone || typeof db === "undefined" || !db) return;
+    const btn = document.getElementById("markAllReadBtn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "⏳ جاري التحديث...";
+    }
+    try {
+      const myTail = phoneTail9(phone);
+      const snap = await db.collection("notifications").get();
+      const batch = db.batch();
+      let count = 0;
+      snap.forEach(function(doc) {
+        const d = doc.data() || {};
+        const refPhone = d.userPhone || d.recipientPhone || d.uniqueAccountRef || "";
+        const belongs =
+          cleanDigits(refPhone) === cleanDigits(phone) ||
+          (myTail.length >= 7 && phoneTail9(refPhone) === myTail);
+        if (belongs && d.isRead !== true) {
+          batch.set(doc.ref, { isRead: true }, { merge: true });
+          count++;
+        }
+      });
+      if (count > 0) {
+        await batch.commit();
+      }
+    } catch (_) {}
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "✅ تحديد الكل كمقروء";
+    }
+  }
+
+  function toggleNotifReadState(notifId, nextReadState) {
+    if (!notifId || typeof db === "undefined" || !db) return;
+    db.collection("notifications").doc(notifId).set({ isRead: Boolean(nextReadState) }, { merge: true }).catch(function() {});
+  }
+
+  function renderNotifications(docsList, phone) {
+    latestLoadedDocs = Array.isArray(docsList) ? docsList : [];
+    latestLoadedPhone = phone || "";
+    const listEl = document.getElementById("notificationsList");
+    if (!listEl) return;
+
+    const myTail = phoneTail9(phone);
+    let filtered = docsList
+      .filter(item => {
+        const refPhone = item.userPhone || item.recipientPhone || item.uniqueAccountRef || "";
+        return cleanDigits(refPhone) === cleanDigits(phone) || (myTail.length >= 7 && phoneTail9(refPhone) === myTail);
+      })
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+
+    if (currentNotifFilter === "available") {
+      filtered = filtered.filter(n => {
+        const st = String(n.status || n.rawReplyText || "");
+        return st.indexOf("متوفر") !== -1 && st.indexOf("غير") === -1;
+      });
+    } else if (currentNotifFilter === "unavailable") {
+      filtered = filtered.filter(n => {
+        const st = String(n.status || n.rawReplyText || "");
+        return st.indexOf("غير متوفر") !== -1 || st.indexOf("غير متصل") !== -1 || st.indexOf("متوقف") !== -1;
+      });
+    } else if (currentNotifFilter === "unread") {
+      filtered = filtered.filter(function(n) { return n.isRead !== true; });
+    } else if (currentNotifFilter === "read") {
+      filtered = filtered.filter(function(n) { return n.isRead === true; });
+    } else if (currentNotifFilter === "latest") {
+      filtered = filtered.slice(0, 1);
+    }
+
+    if (!filtered.length) {
+      listEl.innerHTML = '<div class="notif-empty">لا توجد إشعارات واردة لهذا الرقم حتى الآن.</div>';
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(n => {
+      const statusStr = String(n.status || n.rawReplyText || "تم الرد");
+      const isAvail = statusStr.includes("متوفر") && !statusStr.includes("غير");
+      const cls = isAvail ? "avail" : "unavail";
+      const contactClean = cleanDigits(n.pharmacyPhone || "");
+      const hasCoords = n.lat !== null && n.lat !== undefined && n.lng !== null && n.lng !== undefined && !isNaN(parseFloat(n.lat)) && !isNaN(parseFloat(n.lng));
+      const mapHref = hasCoords
+        ? `https://www.google.com/maps?q=${parseFloat(n.lat)},${parseFloat(n.lng)}`
+        : (contactClean ? `https://www.google.com/maps/search/${encodeURIComponent(n.pharmacyName || contactClean)}` : "");
+
+      return `
+        <div class="notif-card ${cls}">
+          <div class="notif-header">
+            <div class="notif-ph-name">🏥 ${n.pharmacyName || "صيدلية"}</div>
+            <span class="notif-badge ${cls}">${isAvail ? "✅ متوفر" : "❌ غير متوفر"}</span>
+          </div>
+          <div class="notif-meta">
+            ${n.medicine ? `<div><strong>الدواء:</strong> ${n.medicine}</div>` : ""}
+            <div><strong>النوع:</strong> ${n.eventType === "question_updated" ? "🔄 تحديث في بيانات السؤال" : "💊 رد صيدلية"}</div>
+            <div><strong>رقم التواصل:</strong> ${n.pharmacyPhone || "غير متوفر"}</div>
+            <div><strong>تاريخ الإشعار:</strong> ${formatNotifDate(n.createdAt)}</div>
+          </div>
+          <div class="notif-actions">
+            ${mapHref ? `<a href="${mapHref}" target="_blank" class="notif-btn-map">📍 موقع الصيدلية في الخريطة</a>` : ""}
+            ${contactClean ? `<a href="tel:${contactClean}" class="notif-btn-call">📞 اتصال (${contactClean})</a>` : ""}
+            <button type="button" onclick="toggleNotifReadState('${n.id}', ${n.isRead !== true})" style="background:#e2e8f0;color:#0f172a;border:none;padding:7px 11px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">${n.isRead === true ? "تحديد كغير مقروء" : "تحديد كمقروء"}</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const phone = localStorage.getItem("userPhone") || "";
+    const badge = document.getElementById("accountRefBadge");
+    if (badge) {
+      badge.textContent = phone ? `مرجع الحساب (رقم السائل): ${phone}` : "يرجى تسجيل الدخول برقم الهاتف";
+    }
+    if (!phone) {
+      document.getElementById("notificationsList").innerHTML =
+        '<div class="notif-empty">يرجى تسجيل الدخول أولاً لعرض الإشعارات المرتبطة برقمك.</div>';
+      return;
+    }
+
+    db.collection("notifications").onSnapshot((snap) => {
+      const all = [];
+      snap.forEach(doc => all.push({ id: doc.id, ...(doc.data() || {}) }));
+      renderNotifications(all, phone);
+    }, (err) => {
+      document.getElementById("notificationsList").innerHTML =
+        `<div class="notif-empty" style="color:#b71c1c;">تعذر تحميل الإشعارات: ${err.message}</div>`;
+    });
+  });
+</script>
+
+<script>
+  (async function syncPharmacyLinksAcrossAllSidebars() {
+    const ADMIN_NUMBER = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+
+    const curDigits = digitsOnly(localStorage.getItem("userPhone") || "");
+    const isAdmin = Boolean(curDigits) && (
+      curDigits === ADMIN_NUMBER ||
+      (tail9(curDigits).length === 9 && tail9(curDigits) === tail9(ADMIN_NUMBER))
+    );
+
+    let isPharmacist = (localStorage.getItem("accountType") === "pharmacist");
+    if (!isPharmacist && curDigits && typeof db !== "undefined" && db) {
+      try {
+        const directSnap = await db.collection("pharmacies").doc(curDigits).get();
+        if (directSnap.exists) {
+          isPharmacist = true;
+        } else {
+          const qSnap = await db.collection("pharmacies").where("phone", "==", curDigits).limit(1).get();
+          if (!qSnap.empty) isPharmacist = true;
+        }
+      } catch (_) {}
+    }
+
+    if (isPharmacist) {
+      localStorage.setItem("accountType", "pharmacist");
+    }
+
+    const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
+    sidebars.forEach((sb) => {
+      if (!sb.querySelector('a[href="pharmacist-replies.html"]')) {
+        const aReplies = document.createElement("a");
+        aReplies.href = "pharmacist-replies.html";
+        aReplies.setAttribute("data-ph-role", "pharmacist");
+        aReplies.style.cssText = "font-weight: bold; background: #0369a1; color: white;";
+        aReplies.textContent = "📩 الرد على الأسئلة";
+        sb.appendChild(aReplies);
+      }
+
+      if (!sb.querySelector('a[href="addph.html"]')) {
+        const aEdit = document.createElement("a");
+        aEdit.href = "addph.html";
+        aEdit.setAttribute("data-ph-role", "pharmacist");
+        aEdit.style.cssText = "font-weight: bold; background: #0f766e; color: white;";
+        aEdit.textContent = "✏️ تعديل بيانات الصيدلية";
+        sb.appendChild(aEdit);
+      }
+
+      if (!sb.querySelector('a[href="pharmacies.html"]')) {
+        const aAdmin = document.createElement("a");
+        aAdmin.id = "adminPharmaciesLink";
+        aAdmin.href = "pharmacies.html";
+        aAdmin.setAttribute("data-ph-role", "admin");
+        aAdmin.style.cssText = "font-weight: bold; background: #0f766e; color: white;";
+        aAdmin.textContent = "🏥 إدارة الصيدليات وجلسات الواتساب";
+        sb.appendChild(aAdmin);
+      }
+    });
+
+    document.querySelectorAll('a[href="pharmacist-replies.html"], a[href="addph.html"][data-ph-role="pharmacist"]').forEach((el) => {
+      el.style.setProperty("display", isPharmacist ? "block" : "none", "important");
+    });
+
+    document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
+      el.style.setProperty("display", isAdmin ? "block" : "none", "important");
+    });
+  })();
+</script>
+
+
+<script>
+  (async function ensureAllSidebarButtonsAndRoles() {
+    const ADMIN_PHONE = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+
+    const digits = digitsOnly(localStorage.getItem("userPhone") || "");
+    const isAdmin = Boolean(digits) && (
+      digits === ADMIN_PHONE ||
+      (tail9(digits).length === 9 && tail9(digits) === tail9(ADMIN_PHONE))
+    );
+
+    let isPharmacist = localStorage.getItem("accountType") === "pharmacist";
+    let phName = String(localStorage.getItem("pharmacyName") || "").trim();
+
+    if (digits && typeof db !== "undefined" && db) {
+      try {
+        const dSnap = await db.collection("pharmacies").doc(digits).get();
+        if (dSnap.exists) {
+          const d = dSnap.data() || {};
+          isPharmacist = true;
+          phName = String(d.name || d.pharmacyName || phName || "").trim();
+        }
+        if (!isPharmacist) {
+          const qSnap = await db.collection("pharmacies").where("phone", "==", digits).limit(1).get();
+          if (!qSnap.empty) {
+            const d = qSnap.docs[0].data() || {};
+            isPharmacist = true;
+            phName = String(d.name || d.pharmacyName || phName || "").trim();
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (isPharmacist) localStorage.setItem("accountType", "pharmacist");
+    if (phName) localStorage.setItem("pharmacyName", phName);
+
+    const sessionEl = document.getElementById("sessionInfo");
+    if (sessionEl) {
+      sessionEl.textContent = (isPharmacist && phName) ? phName : (digits || "غير مسجل");
+    }
+
+    const menuItems = [
+      { href: "profile.html", label: "⚙️ تعديل الملف الشخصي والموقع", bg: "#495057", role: "all" },
+      { href: "index.html", label: "💊 صفحة الاستعلام عن دواء", bg: "#495057", role: "all" },
+      { href: "history.html", label: "📜 الأسئلة السابقة", bg: "#0284c7", role: "all" },
+      { href: "notifications.html", label: "🔔 الإشعارات", bg: "#475569", role: "all" },
+      { href: "daway.html", label: "📱 تحميل تطبيق دواي السودان", bg: "#495057", role: "all" },
+      { href: "pharmacist-replies.html", label: "📩 الرد على الأسئلة الواردة", bg: "#0369a1", role: "pharmacist" },
+      { href: "addph.html", label: "✏️ تعديل بيانات الصيدلية", bg: "#0f766e", role: "pharmacist" },
+      { href: "pharmacies.html", label: "🏥 إدارة الصيدليات وجلسات الواتساب", bg: "#0f766e", role: "admin" }
+    ];
+
+    const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
+    sidebars.forEach((sb) => {
+      const prevContainer = sb.querySelector("#previousQuestionsContainer");
+      menuItems.forEach((item) => {
+        let link = sb.querySelector('a[href="' + item.href + '"]');
+        if (!link) {
+          link = document.createElement("a");
+          link.href = item.href;
+          link.textContent = item.label;
+          link.style.cssText = "font-weight: bold; background: " + item.bg + "; color: white;";
+          if (item.href === "pharmacies.html") {
+            link.id = "adminPharmaciesLink";
+          }
+          if (prevContainer) {
+            sb.insertBefore(link, prevContainer);
+          } else {
+            sb.appendChild(link);
+          }
+        }
+        link.setAttribute("data-menu-role", item.role);
+
+        if (item.role === "admin") {
+          link.style.setProperty("display", isAdmin ? "block" : "none", "important");
+        } else if (item.role === "pharmacist") {
+          link.style.setProperty("display", (isPharmacist || isAdmin) ? "block" : "none", "important");
+        } else {
+          link.style.setProperty("display", "block", "important");
+        }
+      });
+    });
+
+    document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
+      el.style.setProperty("display", isAdmin ? "block" : "none", "important");
+    });
+  })();
+</script>
+
+</body>
+</html>

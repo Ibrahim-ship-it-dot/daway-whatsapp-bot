@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تنزيل وتثبيت تطبيق اسأل الصيدلية</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* أنماط مخصصة للصفحة لتناسق العرض */
+        :root {
+            --primary-color: #00bcd4; /* لون طبي (تركواز) - افتراضي */
+            --secondary-color: #007bff; /* أزرق - افتراضي */
+            --bg-light: #f8f9fa; /* لون خلفية فاتح - افتراضي */
+        }
+        body { font-family: 'Cairo', sans-serif; background: #f8f9fa; } /* لتشغيل الأنماط المدمجة بشكل صحيح */
+        .download-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 25px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .download-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .download-header h4 {
+            font-size: 2em;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        /* هذا النمط يحاكي زر 'Ask' من style.css */
+        .download-btn {
+            background: var(--primary-color);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: 700;
+            text-decoration: none;
+            display: block;
+            margin: 30px auto 20px auto;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: background 0.2s;
+        }
+
+        .download-btn:hover {
+            background: #0097a7;
+        }
+
+        .guide-step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .step-number {
+            font-size: 1.5em;
+            font-weight: 800;
+            color: var(--secondary-color);
+            margin-left: 15px;
+            flex-shrink: 0;
+            line-height: 1.5;
+        }
+
+        .step-text {
+            border-right: 3px solid var(--bg-light);
+            padding-right: 15px;
+            flex-grow: 1; /* للسماح بتمدد النص */
+        }
+
+        .step-text p {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .security-warning {
+            background: #fff3cd; /* لون تنبيهي */
+            color: #856404;
+            padding: 15px;
+            border: 1px solid #ffeeba;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-weight: 700;
+            line-height: 1.6;
+        }
+
+        /* أنماط الصور الجديدة */
+        .step-image {
+            width: 100%;
+            max-width: 450px;
+            height: auto;
+            border-radius: 10px;
+            margin: 15px auto;
+            display: block;
+            border: 1px solid #ddd;
+        }
+
+        .image-placeholder {
+            background: #f1f1f1;
+            color: #6c757d;
+            padding: 20px;
+            text-align: center;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+    </style>
+</head>
+<body>
+        <div id="loading-screen">
+    <img src="images/daway_sudan_logo.png" alt="الشعار" id="logo-img">
+    <p>انتظر من فضلك...</p>
+</div>
+
+<button id="sidebarToggle" class="sidebar-toggle-button" onclick="toggleSidebar()">☰   القائـــمة</button>
+<button id="infoSidebarToggle" class="sidebar-toggle-button" onclick="toggleInfoSidebar()">💡عن التطبيق؟</button>
+
+<div id="sidebar">
+        <div class="sidebar-header">
+              <span id="sessionInfo" style="font-weight: 700;"></span> 
+                <button onclick="logout()" style="background: #ff4d4d; border-radius: 5px; width: 100px; padding: 5px;">خروج</button>
+        </div>
+
+        <a href="profile.html" style="font-weight: bold; background: #495057; color: white;">⚙️ تعديل الملف الشخصي والموقع</a>
+            <a href="index.html" style="font-weight: bold; background: #495057; color: white;">صفحة الاستعلام عن دواء</a>
+            <a href="addph.html" style="font-weight: bold; background: #495057; color: white;">انا صيدلي لدي صيدلية</a>
+            <a href="daway.html" style="font-weight: bold; background: #495057; color: white;">تحميل تطبيق دواي السودان</a>
+
+        <div id="previousQuestionsContainer"></div>
+</div>
+
+<div id="infoSidebar">
+        <div class="info-content">
+                <h3>🚀 ابحث بذكاء عن دوائك</h3>
+                <p style="font-size:1.0em; font-weight: 400;">وداعًا للبحث الطويل! تطبيق **"اسأل الصيدلية"** بوابتك الفورية للعثور على أدويتك بسهولة وذكاء.</p>
+                <ul>
+                        <li><strong>الأقرب والأسرع:</strong> نرسل استعلامك للصيدليات ضمن مسافة (حسب اختيارك).</li>
+                        <li><strong>مقارنة فورية:</strong> شاهد حالة توفر الدواء (متوفر/غير متوفر) والمسافة الدقيقة.</li>
+                        <li><strong>توفير الجهد:</strong> احصل على ردود سريعة وموثوقة دون الحاجة للتنقل.</li>
+                </ul>
+
+
+        </div><a href="index.html" style="
+        display: block;
+        margin-top: 30px;
+        padding: 10px;
+        background: #007bff;
+        color: white;
+        text-align: center;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 1.1em;
+">
+        💊 جرب البحـــث عن دواء
+</a>  <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px;">
+                <h5 style="font-weight: 700;">للتواصل مع المبرمج:</h5>
+                <a href="https://wa.me/09128514785" target="_blank" class="contact-whatsapp" style="display: block; text-align: center; margin-top: 10px; padding: 10px; border-radius: 8px;">
+                        <i data-lucide="whatsapp" style="margin-left: 5px; vertical-align: middle;"></i>
+                        09128514785 (WhatsApp)
+                </a>
+        </div>
+        <a  style="
+        display: block;
+        margin-top: 30px;
+        padding: 10px;
+        background: #007bff;
+        color: white;
+        text-align: center;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 1.1em;
+">
+</a>
+</div>
+
+    <div class="download-container">
+        <div class="download-header">
+            <h4>تنزيل وتثبيت تطبيق اسأل الصيدلية (APK)</h4>
+            <p>لتجربة أسرع وأفضل، حمل التطبيق واتبع خطوات التثبيت اليدوي.</p>
+        </div>
+
+        <div class="guide-step">
+            <div class="step-number">1</div>
+            <div class="step-text">
+                <p>اضغط على زر التحميل أدناه. سيبدأ تنزيل ملف التطبيق **(daway.apk)** مباشرة في جهازك.</p>
+                <p>تأكد من اختيار **"تنزيل"** أو **"Download"** عند بدء عملية التنزيل.</p>
+            </div>
+        </div>
+
+        <a href="https://botel2.netlify.app/daway.apk" download="daway.apk" class="download-btn">
+             <i class="fas fa-download"></i> اضغط هنا لتنزيل التطبيق (APK)
+        </a>
+
+        <div class="image-placeholder">
+            [Image of: Browser 'Download' prompt for APK file]
+            <br>
+            مثال: شاشة بداية التنزيل في المتصفح.
+        </div>
+
+        <hr style="margin: 30px 0; border-top: 1px solid #eee;">
+
+        <div class="guide-step">
+            <div class="step-number">2</div>
+            <div class="step-text">
+                <p><strong>تجاوز التحذير:</strong> قد يعرض المتصفح تحذيراً بأن الملف من مصدر غير معروف. هذا طبيعي لأنه ليس من متجر Google Play. اختر **"التنزيل على أي حال"**.</p>
+                <p>بعد اكتمال التنزيل، انتقل إلى مجلد **"التنزيلات"** (Downloads) في جهازك، وابحث عن ملف **`daway.apk`**.</p>
+            </div>
+        </div>
+
+        <div class="image-placeholder">
+            [Image of: Google Chrome 'File might be harmful' warning]
+            <br>
+            مثال: شاشة تحذير الأمان واختيار "التنزيل على أي حال".
+        </div>
+
+        <hr style="margin: 30px 0; border-top: 1px solid #eee;">
+
+        <div class="guide-step">
+            <div class="step-number">3</div>
+            <div class="step-text">
+                <p><strong>بدء التثبيت:</strong> اضغط على ملف **`daway.apk`** الذي قمت بتنزيله. سيبدأ النظام في تجهيز التطبيق للتثبيت.</p>
+
+                <p><strong>تفعيل التثبيت:</strong> إذا طُلب منك تفعيل خيار **"السماح بالتثبيت من هذا المصدر"** (Allow from this source)، قم بتفعيله أولاً، ثم ارجع إلى شاشة التثبيت واضغط على زر **"تثبيت"**.</p>
+
+                <div class="image-placeholder" style="max-width: 400px; margin: 15px auto;">
+                    [Image of: Android 'Install unknown apps' permission screen]
+                    <br>
+                    مثال: شاشة السماح بالتثبيت من المتصفح/الملفات.
+                </div>
+
+                <div class="image-placeholder" style="max-width: 400px; margin: 15px auto;">
+                    [Image of: Android final installation prompt with Install button]
+                    <br>
+                    مثال: شاشة "هل تريد تثبيت هذا التطبيق؟".
+                </div>
+
+                <div class="security-warning">
+                    <i class="fas fa-exclamation-triangle"></i> ملاحظة: هذه الخطوات مطلوبة لتثبيت التطبيق يدوياً خارج متجر Google Play.
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script src="script.js"></script>
+     <script>
+     window.addEventListener('load', function() {
+    const loadingScreen = document.getElementById('loading-screen');
+
+    // 1. بدء إخفاء الطبقة بتأثير التلاشي (Fade Out)
+    loadingScreen.style.opacity = '0';
+
+    // 2. إخفاء الطبقة بالكامل بعد انتهاء تأثير التلاشي (0.5 ثانية)
+    setTimeout(function() {
+        loadingScreen.style.display = 'none';
+    }, 500);
+});
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ربط جلسات الواتساب (QR / كود)</title>
+  <style>
+    body { font-family: Tahoma, Arial, sans-serif; background: #f3f5f8; padding: 20px; text-align: center; }
+    .box { max-width: 430px; margin: 20px auto; background: #fff; padding: 22px; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
+    input, button { width: 100%; padding: 11px; margin-top: 10px; font-size: 15px; border-radius: 8px; box-sizing: border-box; }
+    button { background: #0b5ed7; color: #fff; border: none; font-weight: bold; cursor: pointer; }
+    button.code-btn { background: #198754; }
+    button.copy-btn { background: #212529; margin-top: 10px; font-size: 14px; padding: 9px; }
+    img { max-width: 250px; margin-top: 15px; border: 1px solid #ddd; border-radius: 8px; }
+    .code-box {
+      margin-top: 15px;
+      padding: 14px;
+      background: #e9f7ef;
+      border: 2px dashed #198754;
+      border-radius: 8px;
+      font-size: 22px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      color: #0f5132;
+      user-select: all;
+    }
+    .info { margin-top: 12px; font-size: 14px; color: #333; background: #eef3f8; padding: 10px; border-radius: 8px; }
+    .copied-msg { margin-top: 6px; font-size: 13px; color: #198754; font-weight: bold; min-height: 18px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h3>ربط جلسة واتساب</h3>
+    <input id="sessionId" value="session1" placeholder="اسم الجلسة مثل session1" />
+    <button onclick="startQr()">تشغيل وتوليد QR</button>
+
+    <hr style="margin:18px 0; border:none; border-top:1px solid #eee;" />
+
+    <input id="phoneNum" placeholder="رقم الهاتف مع رمز الدولة مثل 249912345678" />
+    <button class="code-btn" onclick="requestCode()">طلب كود الربط بالرقم</button>
+
+    <div id="info" class="info">الحالة: بانتظار التشغيل</div>
+    <div id="codeArea"></div>
+    <div id="qrArea"></div>
+  </div>
+
+  <script>
+    let timer = null;
+    let currentCode = '';
+
+    function beginPolling(sessionId) {
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => checkState(sessionId), 2000);
+      checkState(sessionId);
+    }
+
+    function renderCodeBlock(code) {
+      currentCode = code || '';
+      if (!currentCode) return;
+      document.getElementById('codeArea').innerHTML = `
+        <div class="code-box" id="pairingCodeBox">${currentCode}</div>
+        <button class="copy-btn" type="button" onclick="copyPairingCode()">نسخ الكود</button>
+        <div class="copied-msg" id="copiedMsg"></div>
+        <p style="font-size:13px; margin-top:6px;">أدخل الكود في واتساب: الأجهزة المرتبطة -> ربط برقم الهاتف</p>
+      `;
+    }
+
+    async function copyPairingCode() {
+      const msgEl = document.getElementById('copiedMsg');
+      if (!currentCode) return;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(currentCode);
+        } else {
+          const tempInput = document.createElement('input');
+          tempInput.value = currentCode;
+          document.body.appendChild(tempInput);
+          tempInput.select();
+          document.execCommand('copy');
+          document.body.removeChild(tempInput);
+        }
+        if (msgEl) msgEl.textContent = 'تم نسخ الكود بنجاح ✅';
+      } catch (_) {
+        if (msgEl) msgEl.textContent = 'ظلّل الكود وانسخه يدوياً';
+      }
+    }
+
+    async function startQr() {
+      const sessionId = document.getElementById('sessionId').value.trim() || 'session1';
+      document.getElementById('info').textContent = 'جاري تشغيل الجلسة وتوليد QR...';
+      await fetch('/api/session/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId })
+      });
+      beginPolling(sessionId);
+    }
+
+    async function requestCode() {
+      const sessionId = document.getElementById('sessionId').value.trim() || 'session1';
+      const phone = document.getElementById('phoneNum').value.trim();
+      document.getElementById('info').textContent = 'جاري طلب كود الربط للرقم...';
+
+      const res = await fetch('/api/pair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, phone })
+      });
+      const data = await res.json();
+
+      if (!data.ok) {
+        document.getElementById('info').textContent = 'خطأ: ' + data.error;
+        return;
+      }
+
+      renderCodeBlock(data.code);
+      beginPolling(sessionId);
+    }
+
+    async function checkState(sessionId) {
+      const res = await fetch('/api/state?session=' + encodeURIComponent(sessionId));
+      const data = await res.json();
+      const info = document.getElementById('info');
+      const qrArea = document.getElementById('qrArea');
+      const codeArea = document.getElementById('codeArea');
+
+      info.textContent = `الجلسة: ${data.sessionId} | الحالة: ${data.status} | الرقم: ${data.ownPhone || 'غير مربوط'}`;
+
+      if (data.status === 'connected') {
+        qrArea.innerHTML = '<p style="color:green;font-weight:bold;">✅ تم الربط وحفظ الجلسة بنجاح!</p>';
+        codeArea.innerHTML = '';
+        currentCode = '';
+        clearInterval(timer);
+      } else if (data.pairingCode) {
+        if (!document.getElementById('pairingCodeBox') || currentCode !== data.pairingCode) {
+          renderCodeBlock(data.pairingCode);
+        }
+      } else if (data.qr) {
+        qrArea.innerHTML = `<img src="${data.qr}" alt="QR Code" /><p style="font-size:13px;">امسح الـ QR من واتساب -> الأجهزة المرتبطة</p>`;
+      }
+    }
+  </script>
+</body>
+</html>

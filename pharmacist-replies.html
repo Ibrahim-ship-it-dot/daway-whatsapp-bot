@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الرد على الأسئلة الواردة - اسأل الصيدلية</title>
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00bcd4"/>
+<style>
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #f4f7f9;
+    margin: 0;
+    padding: 16px;
+  }
+  .pr-wrap {
+    max-width: 780px;
+    margin: 0 auto;
+  }
+  .pr-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    padding: 14px 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 14px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .pr-topbar h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #0f172a;
+  }
+  .pr-nav-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .pr-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 13px;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 13px;
+    color: #fff;
+    background: #495057;
+  }
+  .pr-btn.primary {
+    background: #0284c7;
+  }
+  .pr-filter-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .filter-chip {
+    border: 1.5px solid #cbd5e1;
+    background: #ffffff;
+    color: #1e293b;
+    border-radius: 999px;
+    padding: 6px 13px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 12.5px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .filter-chip.active {
+    background: #0f172a;
+    color: #ffffff;
+    border-color: #0f172a;
+  }
+  .ask-card {
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    border: 1px solid #e2e8f0;
+    transition: transform 0.15s ease;
+  }
+  /* ألوان الحالات: جديد / تمت رؤيته / تم الرد */
+  .ask-card.state-new {
+    background: #e0f2fe;
+    border-color: #38bdf8;
+    border-right: 6px solid #0284c7;
+  }
+  .ask-card.state-seen {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    border-right: 6px solid #94a3b8;
+  }
+  .ask-card.state-replied {
+    background: #dcfce7;
+    border-color: #4ade80;
+    border-right: 6px solid #16a34a;
+  }
+  .ask-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ask-med {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+  .state-badge {
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 800;
+  }
+  .badge-new {
+    background: #0284c7;
+    color: #ffffff;
+  }
+  .badge-seen {
+    background: #e2e8f0;
+    color: #334155;
+  }
+  .badge-replied {
+    background: #16a34a;
+    color: #ffffff;
+  }
+  .ask-meta {
+    font-size: 13px;
+    color: #334155;
+    margin-top: 6px;
+    line-height: 1.65;
+  }
+  .ask-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .btn-avail {
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-unavail {
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-edit {
+    background: #475569;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-mark-seen {
+    background: #0369a1;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .empty-box {
+    background: #ffffff;
+    padding: 28px;
+    border-radius: 12px;
+    text-align: center;
+    color: #64748b;
+    font-weight: 700;
+  }
+  .pag-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    background: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+</style>
+</head>
+<body>
+<div class="pr-wrap">
+  <div class="pr-topbar">
+    <div>
+      <h2>📩 الرد على الأسئلة الواردة</h2>
+      <div id="phIdentitySubtitle" style="font-size:12.5px;color:#475569;font-weight:700;margin-top:2px;">جاري التحقق من حساب الصيدلي...</div>
+    </div>
+    <div class="pr-nav-btns">
+      <a href="addph.html" class="pr-btn primary">✏️ تعديل الصيدلية</a>
+      <a  id="adminPharmaciesLink" class="pr-btn" style="display: none !important;">🏥 الصيدليات</a>
+      <a href="index.html" class="pr-btn">🏠 الرئيسية</a>
+    </div>
+  </div>
+
+  <div class="pr-filter-bar">
+    <button type="button" id="fltAll" class="filter-chip active" onclick="setStatusFilter('all')">الكل</button>
+    <button type="button" id="fltNew" class="filter-chip" onclick="setStatusFilter('new')">🆕 جديد</button>
+    <button type="button" id="fltSeen" class="filter-chip" onclick="setStatusFilter('seen')">👁️ تمت رؤيته</button>
+    <button type="button" id="fltReplied" class="filter-chip" onclick="setStatusFilter('replied')">✅ تم الرد</button>
+  </div>
+
+  <div id="incomingRepliesContainer">
+    <div class="empty-box">⏳ جاري تحميل الأسئلة الموجّهة لصيدليتك...</div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script src="script.js"></script>
+<script>
+  let currentFilter = 'all';
+  let currentPage = 1;
+  const PAGE_SIZE = 6;
+  let allTargetedAsks = [];
+  let currentPhDigits = '';
+  let currentPhName = 'صيدلية';
+
+  function digitsOnly(v) {
+    return String(v || '').replace(/\D/g, '');
+  }
+
+  function isSudan12(d) {
+    return /^249\d{9}$/.test(digitsOnly(d));
+  }
+
+  function getSeenStorageKey(phDigits) {
+    return 'seenAsks_' + (phDigits || 'default');
+  }
+
+  function loadSeenSet(phDigits) {
+    try {
+      const raw = localStorage.getItem(getSeenStorageKey(phDigits));
+      const arr = raw ? JSON.parse(raw) : [];
+      return new Set(Array.isArray(arr) ? arr.map(String) : []);
+    } catch (_) {
+      return new Set();
+    }
+  }
+
+  function saveSeenId(phDigits, askId) {
+    if (!askId) return;
+    const set = loadSeenSet(phDigits);
+    set.add(String(askId));
+    try {
+      localStorage.setItem(getSeenStorageKey(phDigits), JSON.stringify(Array.from(set)));
+    } catch (_) {}
+  }
+
+  function haversineKm(lat1, lng1, lat2, lng2) {
+    const toRad = (v) => (Number(v) * Math.PI) / 180;
+    const R = 6371;
+    const dLat = toRad(Number(lat2) - Number(lat1));
+    const dLng = toRad(Number(lng2) - Number(lng1));
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function isInSudan(latVal, lngVal) {
+    const lat = parseFloat(latVal);
+    const lng = parseFloat(lngVal);
+    if (isNaN(lat) || isNaN(lng)) return false;
+    return lat >= 3.5 && lat <= 23.0 && lng >= 21.5 && lng <= 39.0;
+  }
+
+  async function verifyPharmacist(myDigits) {
+    if (!isSudan12(myDigits)) return { ok: false, phDoc: null };
+    if (typeof db === 'undefined' || !db) return { ok: false, phDoc: null };
+    try {
+      const dSnap = await db.collection('pharmacies').doc(myDigits).get();
+      if (dSnap.exists) return { ok: true, phDoc: dSnap.data() || {} };
+      const qSnap = await db.collection('pharmacies').where('phone', '==', myDigits).limit(1).get();
+      if (!qSnap.empty) return { ok: true, phDoc: qSnap.docs[0].data() || {} };
+    } catch (_) {}
+    return { ok: false, phDoc: null };
+  }
+
+  function isTargetedToPharmacy(docData, myDigits, phDoc) {
+    if (!docData || !isSudan12(myDigits)) return false;
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+    const myTail = tail9(myDigits);
+    const samePhone = (raw) => {
+      const d = digitsOnly(raw);
+      if (!isSudan12(d)) return false;
+      return d === myDigits || (myTail.length === 9 && tail9(d) === myTail);
+    };
+
+    const directPhones = [
+      docData.targetPharmacyPhone,
+      docData.targetPharmacyId,
+      docData.pharmacyPhone,
+      docData.pharmacyId
+    ];
+    if (directPhones.some(samePhone)) return true;
+
+    const lists = [
+      docData.targetPharmacies,
+      docData.targetedPharmacies,
+      docData.sentToPharmacies,
+      docData.matchedPharmacies,
+      docData.nearbyPharmacies
+    ];
+    for (const col of lists) {
+      if (!col) continue;
+      if (Array.isArray(col)) {
+        for (const item of col) {
+          if (typeof item === 'string' || typeof item === 'number') {
+            if (samePhone(item)) return true;
+          } else if (item && typeof item === 'object') {
+            if (samePhone(item.phone || item.pharmacyPhone || item.pharmacyId || item.id || item.sessionId)) return true;
+          }
+        }
+      } else if (typeof col === 'object') {
+        for (const [k, v] of Object.entries(col)) {
+          if (samePhone(k)) return true;
+          if (v && typeof v === 'object' && samePhone(v.phone || v.pharmacyPhone || v.pharmacyId || v.sessionId)) return true;
+        }
+      }
+    }
+
+    const askLat = parseFloat(docData.lat ?? docData.userLat ?? docData.latitude);
+    const askLng = parseFloat(docData.lng ?? docData.userLng ?? docData.longitude);
+    const phLat = parseFloat(phDoc && phDoc.lat);
+    const phLng = parseFloat(phDoc && phDoc.lng);
+    const rangeKm = parseFloat(docData.range ?? docData.searchRange);
+
+    if (isInSudan(askLat, askLng) && isInSudan(phLat, phLng) && !isNaN(rangeKm) && rangeKm > 0) {
+      if (haversineKm(askLat, askLng, phLat, phLng) <= rangeKm) return true;
+    }
+
+    return false;
+  }
+
+  function classifyAskState(q, myDigits, seenSet) {
+    const resps = Array.isArray(q.responses) ? q.responses : [];
+    const myResp = resps.find(r => digitsOnly(r.pharmacyPhone || r.pharmacyId || r.phone) === myDigits);
+    if (myResp) {
+      return { code: 'replied', label: '✅ تم الرد', cardClass: 'state-replied', badgeClass: 'badge-replied', myResp };
+    }
+    const isSeen = seenSet.has(String(q.id)) || Boolean(q.seenByPharmacy && q.seenByPharmacy[myDigits]);
+    if (isSeen) {
+      return { code: 'seen', label: '👁️ تمت رؤيتها', cardClass: 'state-seen', badgeClass: 'badge-seen', myResp: null };
+    }
+    return { code: 'new', label: '🆕 جديد', cardClass: 'state-new', badgeClass: 'badge-new', myResp: null };
+  }
+
+  function setStatusFilter(flt) {
+    currentFilter = flt;
+    currentPage = 1;
+    ['all', 'new', 'seen', 'replied'].forEach(k => {
+      const el = document.getElementById('flt' + k.charAt(0).toUpperCase() + k.slice(1));
+      if (el) el.classList.toggle('active', k === flt);
+    });
+    renderAsksPage();
+  }
+
+  async function markAskSeen(askId) {
+    saveSeenId(currentPhDigits, askId);
+    if (typeof db !== 'undefined' && db && currentPhDigits) {
+      try {
+        await db.collection('AskPharmacy').doc(String(askId)).set({
+          seenByPharmacy: { [currentPhDigits]: new Date().toISOString() }
+        }, { merge: true });
+      } catch (_) {}
+    }
+    renderAsksPage();
+  }
+
+  async function replyToAsk(askId, statusLabel, customText) {
+    if (!askId || !isSudan12(currentPhDigits) || typeof db === 'undefined' || !db) return;
+    let finalText = customText;
+    if (!finalText) {
+      const entered = prompt('اكتب رد الصيدلية (' + statusLabel + '):', statusLabel);
+      if (entered === null) return;
+      finalText = (entered || statusLabel).trim();
+    }
+
+    const nowIso = new Date().toISOString();
+    try {
+      const ref = db.collection('AskPharmacy').doc(String(askId));
+      const snap = await ref.get();
+      const d = snap.exists ? (snap.data() || {}) : {};
+      const responsesArr = Array.isArray(d.responses) ? d.responses.slice() : [];
+      const askerPhone = digitsOnly(d.UserPhone || d.userPhone || d.phone);
+
+      const entry = {
+        pharmacyId: currentPhDigits,
+        pharmacyPhone: currentPhDigits,
+        pharmacyName: currentPhName,
+        status: statusLabel,
+        rawReplyText: finalText,
+        respondedAt: nowIso
+      };
+
+      const idx = responsesArr.findIndex(r => digitsOnly(r.pharmacyPhone || r.pharmacyId || r.phone) === currentPhDigits);
+      if (idx !== -1) responsesArr[idx] = { ...responsesArr[idx], ...entry };
+      else responsesArr.push(entry);
+
+      await ref.set({
+        Status: statusLabel,
+        responses: responsesArr,
+        updatedAt: nowIso
+      }, { merge: true });
+
+      saveSeenId(currentPhDigits, askId);
+
+      if (askerPhone) {
+        await db.collection('notifications').doc('notif_' + askId + '_' + currentPhDigits).set({
+          userPhone: askerPhone,
+          recipientPhone: askerPhone,
+          uniqueAccountRef: askerPhone,
+          askId: String(askId),
+          medicine: d.medicine || 'دواء',
+          pharmacyId: currentPhDigits,
+          pharmacyPhone: currentPhDigits,
+          pharmacyName: currentPhName,
+          status: statusLabel,
+          rawReplyText: finalText,
+          isRead: false,
+          createdAt: nowIso
+        }, { merge: true });
+      }
+    } catch (err) {
+      alert('تعذر إرسال الرد: ' + (err.message || err));
+    }
+  }
+
+  function renderAsksPage() {
+    const container = document.getElementById('incomingRepliesContainer');
+    if (!container) return;
+
+    const seenSet = loadSeenSet(currentPhDigits);
+    const enriched = allTargetedAsks.map(q => ({
+      ...q,
+      stateInfo: classifyAskState(q, currentPhDigits, seenSet)
+    }));
+
+    const filtered = currentFilter === 'all'
+      ? enriched
+      : enriched.filter(x => x.stateInfo.code === currentFilter);
+
+    if (!filtered.length) {
+      container.innerHTML = '<div class="empty-box">لا توجد أسئلة مطابقة لهذا التصنيف حالياً.</div>';
+      return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+    const cardsHtml = pageItems.map(q => {
+      const st = q.stateInfo;
+      const safeId = String(q.id).replace(/'/g, "\\'");
+      const currentReplyText = st.myResp
+        ? (st.myResp.status + (st.myResp.rawReplyText ? ' — ' + st.myResp.rawReplyText : ''))
+        : 'لم يتم الرد بعد';
+
+      return `
+        <div class="ask-card ${st.cardClass}">
+          <div class="ask-head">
+            <span class="ask-med">💊 الدواء: ${q.medicine || 'غير محدد'}</span>
+            <span class="state-badge ${st.badgeClass}">${st.label}</span>
+          </div>
+          <div class="ask-meta">
+            <div><strong>السائل:</strong> ${q.UserPhone || q.userPhone || 'مستخدم'} | <strong>النطاق:</strong> ${q.range || q.searchRange || 4} كم</div>
+            <div><strong>حالة الرد:</strong> ${currentReplyText}</div>
+          </div>
+          <div class="ask-actions">
+            <button type="button" class="btn-avail" onclick="replyToAsk('${safeId}', 'متوفر', 'متوفر الآن')">✅ متوفر الآن</button>
+            <button type="button" class="btn-unavail" onclick="replyToAsk('${safeId}', 'غير متوفر', 'غير متوفر حالياً')">❌ غير متوفر الآن</button>
+            <button type="button" class="btn-edit" onclick="replyToAsk('${safeId}', '${st.myResp ? (st.myResp.status || 'تحديث') : 'تحديث'}', '')">✏️ تعديل الرد</button>
+            ${st.code === 'new' ? `<button type="button" class="btn-mark-seen" onclick="markAskSeen('${safeId}')">👁️ تحديد كتمت رؤيته</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const pagHtml = totalPages > 1 ? `
+      <div class="pag-bar">
+        <button type="button" class="pr-btn" onclick="currentPage--; renderAsksPage();" ${currentPage <= 1 ? 'disabled' : ''}>السابق ➡️</button>
+        <span style="font-size:12.5px;font-weight:800;color:#334155;">صفحة ${currentPage} من ${totalPages} (${filtered.length})</span>
+        <button type="button" class="pr-btn" onclick="currentPage++; renderAsksPage();" ${currentPage >= totalPages ? 'disabled' : ''}>⬅️ التالي</button>
+      </div>
+    ` : '';
+
+    container.innerHTML = cardsHtml + pagHtml;
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const container = document.getElementById('incomingRepliesContainer');
+    const subEl = document.getElementById('phIdentitySubtitle');
+    currentPhDigits = digitsOnly(localStorage.getItem('userPhone'));
+
+    const auth = await verifyPharmacist(currentPhDigits);
+    if (!auth.ok) {
+      if (subEl) subEl.textContent = 'حساب غير مسجل كصيدلية';
+      if (container) {
+        container.innerHTML = '<div class="empty-box" style="color:#b91c1c;">⛔ هذه الصفحة مخصصة للصيدليات المسجلة فقط برقم سوداني صحيح (249...).</div>';
+      }
+      return;
+    }
+
+    currentPhName = (auth.phDoc && auth.phDoc.name) || localStorage.getItem('pharmacyName') || 'صيدلية';
+    if (subEl) subEl.textContent = currentPhName + ' (' + currentPhDigits + ')';
+
+    db.collection('AskPharmacy').onSnapshot((snap) => {
+      const rows = [];
+      snap.forEach(doc => {
+        const d = doc.data() || {};
+        if (!isTargetedToPharmacy(d, currentPhDigits, auth.phDoc)) return;
+        const ms = d.createdAt && d.createdAt.toDate
+          ? d.createdAt.toDate().getTime()
+          : (new Date(d.createdAt || 0).getTime() || 0);
+        rows.push({ id: doc.id, ms, ...d });
+      });
+      rows.sort((a, b) => b.ms - a.ms);
+      allTargetedAsks = rows;
+      renderAsksPage();
+    }, () => {});
+  });
+</script>
+
+<script>
+  (function enforceAdminOnlyPharmaciesVisibility() {
+    const ADMIN_NUMBER = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+
+    function isCurrentUserAdmin() {
+      const cur = digitsOnly(localStorage.getItem("userPhone"));
+      if (!cur) return false;
+      return cur === ADMIN_NUMBER || (tail9(cur).length === 9 && tail9(cur) === tail9(ADMIN_NUMBER));
+    }
+
+    function applyVisibility() {
+      const allowed = isCurrentUserAdmin();
+      if (allowed) {
+        localStorage.setItem("isAdmin", "true");
+        localStorage.setItem("userRole", "admin");
+      } else {
+        localStorage.removeItem("isAdmin");
+        if (localStorage.getItem("userRole") === "admin") {
+          localStorage.removeItem("userRole");
+        }
+      }
+
+      const links = document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink');
+      links.forEach((el) => {
+        el.style.setProperty("display", allowed ? "block" : "none", "important");
+      });
+    }
+
+    applyVisibility();
+    document.addEventListener("DOMContentLoaded", applyVisibility);
+    setTimeout(applyVisibility, 300);
+  })();
+</script>
+
+
+<script>
+  (async function syncPharmacyLinksAcrossAllSidebars() {
+    const ADMIN_NUMBER = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+
+    const curDigits = digitsOnly(localStorage.getItem("userPhone") || "");
+    const isAdmin = Boolean(curDigits) && (
+      curDigits === ADMIN_NUMBER ||
+      (tail9(curDigits).length === 9 && tail9(curDigits) === tail9(ADMIN_NUMBER))
+    );
+
+    let isPharmacist = (localStorage.getItem("accountType") === "pharmacist");
+    if (!isPharmacist && curDigits && typeof db !== "undefined" && db) {
+      try {
+        const directSnap = await db.collection("pharmacies").doc(curDigits).get();
+        if (directSnap.exists) {
+          isPharmacist = true;
+        } else {
+          const qSnap = await db.collection("pharmacies").where("phone", "==", curDigits).limit(1).get();
+          if (!qSnap.empty) isPharmacist = true;
+        }
+      } catch (_) {}
+    }
+
+    if (isPharmacist) {
+      localStorage.setItem("accountType", "pharmacist");
+    }
+
+    const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
+    sidebars.forEach((sb) => {
+      if (!sb.querySelector('a[href="pharmacist-replies.html"]')) {
+        const aReplies = document.createElement("a");
+        aReplies.href = "pharmacist-replies.html";
+        aReplies.setAttribute("data-ph-role", "pharmacist");
+        aReplies.style.cssText = "font-weight: bold; background: #0369a1; color: white;";
+        aReplies.textContent = "📩 الرد على الأسئلة";
+        sb.appendChild(aReplies);
+      }
+
+      if (!sb.querySelector('a[href="addph.html"]')) {
+        const aEdit = document.createElement("a");
+        aEdit.href = "addph.html";
+        aEdit.setAttribute("data-ph-role", "pharmacist");
+        aEdit.style.cssText = "font-weight: bold; background: #0f766e; color: white;";
+        aEdit.textContent = "✏️ تعديل بيانات الصيدلية";
+        sb.appendChild(aEdit);
+      }
+
+      if (!sb.querySelector('a[href="pharmacies.html"]')) {
+        const aAdmin = document.createElement("a");
+        aAdmin.id = "adminPharmaciesLink";
+        aAdmin.href = "pharmacies.html";
+        aAdmin.setAttribute("data-ph-role", "admin");
+        aAdmin.style.cssText = "font-weight: bold; background: #0f766e; color: white;";
+        aAdmin.textContent = "🏥 إدارة الصيدليات وجلسات الواتساب";
+        sb.appendChild(aAdmin);
+      }
+    });
+
+    document.querySelectorAll('a[href="pharmacist-replies.html"], a[href="addph.html"][data-ph-role="pharmacist"]').forEach((el) => {
+      el.style.setProperty("display", isPharmacist ? "block" : "none", "important");
+    });
+
+    document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
+      el.style.setProperty("display", isAdmin ? "block" : "none", "important");
+    });
+  })();
+</script>
+
+
+<script>
+  (async function ensureAllSidebarButtonsAndRoles() {
+    const ADMIN_PHONE = "249128514785";
+    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+    const tail9 = (v) => {
+      const d = digitsOnly(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    };
+
+    const digits = digitsOnly(localStorage.getItem("userPhone") || "");
+    const isAdmin = Boolean(digits) && (
+      digits === ADMIN_PHONE ||
+      (tail9(digits).length === 9 && tail9(digits) === tail9(ADMIN_PHONE))
+    );
+
+    let isPharmacist = localStorage.getItem("accountType") === "pharmacist";
+    let phName = String(localStorage.getItem("pharmacyName") || "").trim();
+
+    if (digits && typeof db !== "undefined" && db) {
+      try {
+        const dSnap = await db.collection("pharmacies").doc(digits).get();
+        if (dSnap.exists) {
+          const d = dSnap.data() || {};
+          isPharmacist = true;
+          phName = String(d.name || d.pharmacyName || phName || "").trim();
+        }
+        if (!isPharmacist) {
+          const qSnap = await db.collection("pharmacies").where("phone", "==", digits).limit(1).get();
+          if (!qSnap.empty) {
+            const d = qSnap.docs[0].data() || {};
+            isPharmacist = true;
+            phName = String(d.name || d.pharmacyName || phName || "").trim();
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (isPharmacist) localStorage.setItem("accountType", "pharmacist");
+    if (phName) localStorage.setItem("pharmacyName", phName);
+
+    const sessionEl = document.getElementById("sessionInfo");
+    if (sessionEl) {
+      sessionEl.textContent = (isPharmacist && phName) ? phName : (digits || "غير مسجل");
+    }
+
+    const menuItems = [
+      { href: "profile.html", label: "⚙️ تعديل الملف الشخصي والموقع", bg: "#495057", role: "all" },
+      { href: "index.html", label: "💊 صفحة الاستعلام عن دواء", bg: "#495057", role: "all" },
+      { href: "history.html", label: "📜 الأسئلة السابقة", bg: "#0284c7", role: "all" },
+      { href: "notifications.html", label: "🔔 الإشعارات", bg: "#475569", role: "all" },
+      { href: "daway.html", label: "📱 تحميل تطبيق دواي السودان", bg: "#495057", role: "all" },
+      { href: "pharmacist-replies.html", label: "📩 الرد على الأسئلة الواردة", bg: "#0369a1", role: "pharmacist" },
+      { href: "addph.html", label: "✏️ تعديل بيانات الصيدلية", bg: "#0f766e", role: "pharmacist" },
+      { href: "pharmacies.html", label: "🏥 إدارة الصيدليات وجلسات الواتساب", bg: "#0f766e", role: "admin" }
+    ];
+
+    const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
+    sidebars.forEach((sb) => {
+      const prevContainer = sb.querySelector("#previousQuestionsContainer");
+      menuItems.forEach((item) => {
+        let link = sb.querySelector('a[href="' + item.href + '"]');
+        if (!link) {
+          link = document.createElement("a");
+          link.href = item.href;
+          link.textContent = item.label;
+          link.style.cssText = "font-weight: bold; background: " + item.bg + "; color: white;";
+          if (item.href === "pharmacies.html") {
+            link.id = "adminPharmaciesLink";
+          }
+          if (prevContainer) {
+            sb.insertBefore(link, prevContainer);
+          } else {
+            sb.appendChild(link);
+          }
+        }
+        link.setAttribute("data-menu-role", item.role);
+
+        if (item.role === "admin") {
+          link.style.setProperty("display", isAdmin ? "block" : "none", "important");
+        } else if (item.role === "pharmacist") {
+          link.style.setProperty("display", (isPharmacist || isAdmin) ? "block" : "none", "important");
+        } else {
+          link.style.setProperty("display", "block", "important");
+        }
+      });
+    });
+
+    document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
+      el.style.setProperty("display", isAdmin ? "block" : "none", "important");
+    });
+  })();
+</script>
+
+</body>
+</html>
