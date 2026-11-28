@@ -22,8 +22,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-
-
 function saveQuestionLocally(phone, questionObj) {
     if (!phone || !questionObj || !questionObj.medicine) return;
     const key = "savedUserQuestions_" + phone;
@@ -55,112 +53,116 @@ function getLocalSavedQuestions(phone) {
     }
 }
 
-
 function applyResponsesDirectlyToCards(responses, queryId = "") {
     if (!Array.isArray(responses) || !responses.length) return false;
+    const seenReplyKeys = new Set();
+    let updatedAny = false;
+
+    responses.forEach((r, idx) => {
+        if (!r || typeof r !== "object") return;
+        const rAskId = String(r.askId || r.questionId || r.queryId || "").trim();
+        if (queryId && rAskId && rAskId !== String(queryId).trim()) return;
+
+        const replyUniqueId = String(r.id || r.replyId || r.stanzaId || r.messageId || "").trim();
+        const dedupKey = replyUniqueId || [
+            rAskId || queryId || "",
+            String(r.pharmacyId || r.pharmacyPhone || r.senderPhone || r.phone || idx).trim(),
+            String(r.status || r.rawReplyText || r.replyText || r.reply || r.text || "").trim()
+        ].join("::");
+
+        if (seenReplyKeys.has(dedupKey)) return;
+        seenReplyKeys.add(dedupKey);
+
+        const targetAskId = rAskId || queryId || "";
+        if (applySinglePharmacyReplyToDOM(r, targetAskId)) {
+            updatedAny = true;
+        }
+    });
+
+    return updatedAny;
+}
+
+function applySinglePharmacyReplyToDOM(replyObj, fallbackQueryId = "") {
+    if (!replyObj || typeof replyObj !== "object") return false;
     const container = document.getElementById("pharmaciesContainer");
     if (!container) return false;
     const cards = Array.from(container.querySelectorAll(".pharmacy"));
     if (!cards.length) return false;
 
-    const toDigits = (v) => String(v || "").replace(/\D/g, "");
-    const toTail9 = (v) => {
-        const d = toDigits(v);
-        return d.length > 9 ? d.slice(-9) : d;
-    };
-    const samePhone = (a, b) => {
-        const da = toDigits(a);
-        const db = toDigits(b);
-        if (!da || !db) return false;
-        if (da === db) return true;
-        const ta = toTail9(da);
-        const tb = toTail9(db);
-        return ta.length >= 7 && ta === tb;
-    };
+    const rId = String(replyObj.pharmacyId || replyObj.sessionId || "").trim();
+    const rName = String(replyObj.pharmacyName || replyObj.name || "").trim().toLowerCase();
+    const rPhones = [
+        replyObj.pharmacyPhone, replyObj.senderPhone, replyObj.phone, replyObj.jid
+    ].map(normalizePhoneDigits).filter(Boolean);
 
-    const cardMeta = cards.map((card) => {
+    let matchedCard = null;
+    for (const card of cards) {
         const cardId = String(card.dataset.id || "").trim();
-        const phoneMatch = (card.textContent || "").match(/رقم الصيدلية[:\s]*([+\d\s-]{7,20})/);
-        const cardPhone = toDigits(phoneMatch ? phoneMatch[1] : "");
-        return { card, cardId, cardPhone };
-    });
+        const cardText = String(card.textContent || "");
+        const phoneMatch = cardText.match(/رقم الصيدلية[:\s]*([+\d\s-]{7,20})/);
+        const cardPhone = normalizePhoneDigits(phoneMatch ? phoneMatch[1] : "");
+        const titleEl = card.querySelector(".pharmacy-info strong");
+        const cardName = String(titleEl ? titleEl.textContent : "").trim().toLowerCase();
 
-    let updatedAny = false;
+        const idHit = rId && (cardId === rId || phonesMatch(cardId, rId));
+        const phoneHit = rPhones.some(rp =>
+            (cardPhone && phonesMatch(cardPhone, rp)) || (cardId && phonesMatch(cardId, rp))
+        );
+        const nameHit = rName && cardName && (cardName === rName || cardName.includes(rName) || rName.includes(cardName));
 
-    responses.forEach((r) => {
-        if (!r || typeof r !== "object") return;
-
-        const rPharmacyId = String(r.pharmacyId || "").trim();
-        const rSessionId = String(r.sessionId || "").trim();
-        const rPharmacyPhone = toDigits(r.pharmacyPhone || "");
-        const rSenderPhone = toDigits(r.senderPhone || r.phone || "");
-
-        let matchedEntry = null;
-
-        // 1. مطابقة مباشرة بمعرّف الصيدلية أو رقم الصيدلية في البطاقة
-        if (!matchedEntry && (rPharmacyId || rPharmacyPhone)) {
-            matchedEntry = cardMeta.find((m) =>
-                (rPharmacyId && (m.cardId === rPharmacyId || samePhone(m.cardId, rPharmacyId))) ||
-                (rPharmacyPhone && (m.cardPhone === rPharmacyPhone || samePhone(m.cardPhone, rPharmacyPhone)))
-            );
+        if (idHit || phoneHit || nameHit) {
+            matchedCard = card;
+            break;
         }
+    }
 
-        // 2. مطابقة برقم المرسل / الجلسة (مثلاً رقم جلسة الواتساب لصيدلية دواي)
-        if (!matchedEntry && (rSenderPhone || rSessionId)) {
-            matchedEntry = cardMeta.find((m) =>
-                (rSenderPhone && (m.cardPhone === rSenderPhone || samePhone(m.cardPhone, rSenderPhone) || samePhone(m.cardId, rSenderPhone))) ||
-                (rSessionId && (m.cardId === rSessionId || samePhone(m.cardId, rSessionId) || samePhone(m.cardPhone, rSessionId)))
-            );
+    if (!matchedCard && cards.length === 1) {
+        matchedCard = cards[0];
+    }
+    if (!matchedCard) return false;
+
+    const statusText = resolveDisplayStatus(replyObj, null);
+    const isAvail = statusText === "متوفر";
+    const statusClass = isAvail ? "status-available" : "status-unavailable";
+    const borderClass = isAvail ? "status-available-border" : "status-unavailable-border";
+
+    matchedCard.classList.remove("status-pending-border", "status-available-border", "status-unavailable-border");
+    matchedCard.classList.add(borderClass);
+
+    const statusSec = matchedCard.querySelector(".status-section");
+    if (statusSec) {
+        statusSec.classList.remove("status-pending", "status-available", "status-unavailable");
+        statusSec.classList.add(statusClass);
+        statusSec.innerHTML = `${getStatusIcon(statusText)}<span style="line-height:1.2;">${escapeHtmlText(statusText)}</span>`;
+    }
+
+    const responderPhone = replyObj.pharmacyPhone || replyObj.senderPhone || replyObj.phone || "";
+    const rawReplyText = replyObj.rawReplyText || replyObj.replyText || replyObj.reply || replyObj.text || "";
+    const refId = replyObj.askId || replyObj.questionId || fallbackQueryId || "";
+
+    let detailsBox = matchedCard.querySelector(".live-response-details-box");
+    if (!detailsBox) {
+        detailsBox = document.createElement("div");
+        detailsBox.className = "live-response-details-box";
+        detailsBox.style.cssText = "font-size:12px; margin-top:6px; line-height:1.5; text-align:right; color:#222; background:#f8f9fa; padding:6px 8px; border-radius:6px; box-sizing:border-box;";
+        if (statusSec && statusSec.parentNode) {
+            statusSec.parentNode.appendChild(detailsBox);
+        } else {
+            matchedCard.appendChild(detailsBox);
         }
+    }
 
-        if (!matchedEntry) return;
+    detailsBox.innerHTML =
+        (responderPhone ? `<div><strong>رقم الصيدلية:</strong> ${escapeHtmlText(responderPhone)}</div>` : "") +
+        (rawReplyText && rawReplyText !== statusText ? `<div><strong>الرد:</strong> ${escapeHtmlText(rawReplyText)}</div>` : "") +
+        (refId ? `<div><strong>المرجع:</strong> ${escapeHtmlText(refId)}</div>` : "");
 
-        const card = matchedEntry.card;
-        const statusText = resolveDisplayStatus(r, null);
-        const isAvail = statusText === "متوفر";
-        const statusClass = isAvail ? "status-available" : "status-unavailable";
-        const borderClass = isAvail ? "status-available-border" : "status-unavailable-border";
-
-        card.classList.remove("status-pending-border", "status-available-border", "status-unavailable-border");
-        card.classList.add(borderClass);
-
-        const statusSec = card.querySelector(".status-section");
-        if (statusSec) {
-            statusSec.classList.remove("status-pending", "status-available", "status-unavailable");
-            statusSec.classList.add(statusClass);
-            statusSec.innerHTML = `${getStatusIcon(statusText)}<span style="line-height:1.2;">${escapeHtmlText(statusText)}</span>`;
-        }
-
-        const responderPhone = r.senderPhone || r.phone || r.pharmacyPhone || matchedEntry.cardPhone || "";
-        const rawReplyText = r.rawReplyText || r.replyText || r.text || "";
-        const qMeta = r.quotedMessageData || {};
-        const refId = qMeta.askId || qMeta.stanzaId || r.askId || queryId || "";
-
-        let detailsBox = card.querySelector(".live-response-details-box");
-        if (!detailsBox) {
-            detailsBox = document.createElement("div");
-            detailsBox.className = "live-response-details-box";
-            detailsBox.style.cssText = "font-size:12px; margin-top:6px; line-height:1.5; text-align:right; color:#222; background:#f8f9fa; padding:6px 8px; border-radius:6px; max-width:100%; overflow:hidden; overflow-wrap:anywhere; word-break:break-word; box-sizing:border-box;";
-            if (statusSec && statusSec.parentNode) {
-                statusSec.parentNode.appendChild(detailsBox);
-            } else {
-                card.appendChild(detailsBox);
-            }
-        }
-
-        detailsBox.innerHTML =
-            (responderPhone ? `<div><strong>رقم الصيدلية:</strong> ${escapeHtmlText(responderPhone)}</div>` : "") +
-            (rawReplyText ? `<div><strong>الرد:</strong> ${escapeHtmlText(rawReplyText)}</div>` : "") +
-            (refId ? `<div><strong>المرجع:</strong> ${escapeHtmlText(refId)}</div>` : "");
-
-        updatedAny = true;
-    });
-
-    if (updatedAny && typeof lucide !== "undefined" && lucide.createIcons) {
+    if (typeof lucide !== "undefined" && lucide.createIcons) {
         lucide.createIcons();
     }
-    return updatedAny;
+    return true;
 }
+
 function withTimeout(promise, ms = 3000, label = "operation") {
     return Promise.race([
         promise,
@@ -589,28 +591,48 @@ function renderPharmaciesListToDOM(pharmaciesRaw, selectedRange, medicineName, r
 }
 
 async function displayPharmacies(queryId, medicineName, responses){
-    const pharmContainer = document.getElementById('pharmaciesContainer');
-    const titleEl = document.getElementById('currentQueryTitle');
-    const selectedRange = parseFloat(document.getElementById('searchRange').value) || 4;
+    const pharmContainer = document.getElementById("pharmaciesContainer");
+    const titleEl = document.getElementById("currentQueryTitle");
+    const selectedRange = parseFloat(document.getElementById("searchRange")?.value) || 4;
 
-    if (!isLocationAvailable) {
-        titleEl.classList.add('hidden');
-        setSendingIndicator(false);
-        return;
+    if (!userLocation || !userLocation.lat || !userLocation.lng) {
+      const lLat = parseFloat(localStorage.getItem("userLat") || localStorage.getItem("pharmacyLat") || "");
+      const lLng = parseFloat(localStorage.getItem("userLng") || localStorage.getItem("pharmacyLng") || "");
+      if (!isNaN(lLat) && !isNaN(lLng)) {
+        userLocation = { lat: lLat, lng: lLng };
+        isLocationAvailable = true;
+      }
     }
-    document.getElementById('locationErrorBox').classList.add('hidden');
 
-    // إظهار الصيدليات فوراً من الكاش أو Firestore بدون انتظار طويل
-    const pharmaciesRaw = await getCachedPharmaciesList(false);
-    renderPharmaciesListToDOM(pharmaciesRaw, selectedRange, medicineName, responses, queryId, null);
+    if (!isLocationAvailable || !userLocation.lat || !userLocation.lng) {
+      if (titleEl) titleEl.classList.add("hidden");
+      setSendingIndicator(false);
+      if (pharmContainer && !pharmContainer.querySelector(".pharmacy")) {
+        pharmContainer.innerHTML = '<div class="loading">⚠️ تعذر تحديد موقعك. يرجى تفعيل GPS أو <a href="profile.html">تحديد الموقع</a>.</div>';
+      }
+      return;
+    }
 
-    // تحديث حالات الاتصال من السيرفر في الخلفية وإعادة الرسم بدون إبطاء العرض الأولي
+    const locErr = document.getElementById("locationErrorBox");
+    if (locErr) locErr.classList.add("hidden");
+
+    try {
+      const pharmaciesRaw = await withTimeout(getCachedPharmaciesList(false), 4000, "pharmacies");
+      renderPharmaciesListToDOM(pharmaciesRaw, selectedRange, medicineName, responses, queryId, null);
+    } catch (e) {
+      if (pharmContainer && !pharmContainer.querySelector(".pharmacy")) {
+        pharmContainer.innerHTML = '<div class="loading">⚠️ تعذر جلب الصيدليات حالياً.</div>';
+      }
+    } finally {
+      setSendingIndicator(false);
+    }
+
     fetchPharmacySessionStatusesMap().then(sessionStatusMap => {
-        if (sessionStatusMap && sessionStatusMap.size > 0) {
-            renderPharmaciesListToDOM(pharmaciesRaw, selectedRange, medicineName, responses, queryId, sessionStatusMap);
-        }
+      if (sessionStatusMap && sessionStatusMap.size > 0 && cachedPharmaciesDocs) {
+        renderPharmaciesListToDOM(cachedPharmaciesDocs, selectedRange, medicineName, responses, queryId, sessionStatusMap);
+      }
     }).catch(() => {});
-}
+  }
 
 async function askPharmacy(medicine, phone) {
     const searchRangeEl = document.getElementById('searchRange');
@@ -618,6 +640,8 @@ async function askPharmacy(medicine, phone) {
     const nowIso = new Date().toISOString();
 
     // 1. حفظ السؤال مبدئياً في Firestore و localStorage حتى لو رفضت الصيدليات أو فشل الإرسال
+    try { localStorage.removeItem("lastAskId"); } catch (_) {}
+    if (typeof resetCardsToPendingState === "function") resetCardsToPendingState();
     let askId = "ask_" + Date.now();
     const initialDoc = {
         UserPhone: phone,
@@ -641,6 +665,7 @@ async function askPharmacy(medicine, phone) {
     }
 
     saveQuestionLocally(phone, { id: askId, ...initialDoc });
+    try { localStorage.setItem("lastAskId", askId); } catch (_) {}
     if (typeof renderPreviousQuestions === "function") {
         renderPreviousQuestions().catch(() => {});
     }
@@ -702,38 +727,13 @@ async function checkPreviousQuestionAndAsk(){
         // جلب الموقع بسرعة بدون تعطيل الصفحة
         await getUserLocation().catch(() => {});
 
-        // إظهار الصيدليات فوراً قبل أي استعلامات إضافية
-        await displayPharmacies("pending_" + Date.now(), medicine, []);
-
-        // فحص سريع للأسئلة السابقة بدون Composite Index معقد
-        let matchedPrevDoc = null;
-        try {
-            const prevSnap = await withTimeout(
-                db.collection('AskPharmacy').where('UserPhone', '==', phone).limit(15).get(),
-                2500,
-                "previousQueries"
-            );
-            prevSnap.forEach(doc => {
-                const d = doc.data() || {};
-                if (String(d.medicine || "").trim() === medicine && !matchedPrevDoc) {
-                    matchedPrevDoc = doc;
-                }
-            });
-        } catch (_) {}
-
-        if (matchedPrevDoc) {
-            const queryId = matchedPrevDoc.id;
-            const medicineName = matchedPrevDoc.data().medicine;
-            await loadPreviousResponses(queryId, medicineName, true);
-            setSendingIndicator(false);
-        } else {
-            await askPharmacy(medicine, phone);
-        }
+        await askPharmacy(medicine, phone);
     } catch (err) {
         setSendingIndicator(false);
         showError("حدث خطأ أثناء تنفيذ السؤال", err);
     } finally {
-        toggleAskButton(false);
+      setSendingIndicator(false);
+      toggleAskButton(false);
     }
 }
 
@@ -812,268 +812,53 @@ async function renderPreviousQuestions(){
 }
 
 async function syncResponses(){
-    const phone = localStorage.getItem('userPhone');
-    if(!phone) return;
+    const phone = localStorage.getItem("userPhone");
+    if(!phone || typeof db === "undefined" || !db) return;
 
-    db.collection('AskPharmacy').where('UserPhone','==',phone)
-        .onSnapshot(async snapshot=>{
-            if(snapshot.empty) return;
+    const params = new URLSearchParams(window.location.search || "");
+    const pinnedId = String(params.get("askId") || params.get("queryId") || localStorage.getItem("lastAskId") || "").trim();
+    const targetMed = String(params.get("medicine") || document.getElementById("medicineInput")?.value || "").trim();
 
-            let latestDoc = null;
-            snapshot.forEach(doc => {
-                const d = doc.data() || {};
-                const t = d.updatedAt || (d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : String(d.createdAt || ""));
-                const prevT = latestDoc ? (latestDoc.data.updatedAt || (latestDoc.data.createdAt && latestDoc.data.createdAt.toDate ? latestDoc.data.createdAt.toDate().toISOString() : String(latestDoc.data.createdAt || ""))) : "";
-                if (!latestDoc || t >= prevT) {
-                    latestDoc = { id: doc.id, data: d };
-                }
-            });
+    if (pinnedId && !pinnedId.startsWith("pending_") && !pinnedId.startsWith("ask_")) {
+      db.collection("AskPharmacy").doc(pinnedId).onSnapshot(async (doc) => {
+        if (!doc || !doc.exists) return;
+        const d = doc.data() || {};
+        const responses = Array.isArray(d.responses) ? d.responses : [];
+        if (responses.length > 0 && typeof applyResponsesDirectlyToCards === "function") {
+          applyResponsesDirectlyToCards(responses, doc.id);
+        }
+      }, () => {});
+      return;
+    }
 
-            if (!latestDoc) return;
-            const latestQuery = latestDoc.data;
-            const queryId = latestDoc.id;
-            const responses = Array.isArray(latestQuery.responses) ? latestQuery.responses : [];
-
-            if (responses.length > 0) {
-                applyResponsesDirectlyToCards(responses, queryId);
-            }
-
-            const currentTitleText = document.getElementById('currentQueryTitle')?.textContent || "";
-            if (latestQuery.medicine && (!currentTitleText || currentTitleText.includes(latestQuery.medicine)) && !isQueryActive) {
-                if (typeof displayPharmacies === "function") {
-                    await displayPharmacies(queryId, latestQuery.medicine, responses).catch(() => {});
-                    if (responses.length > 0) applyResponsesDirectlyToCards(responses, queryId);
-                }
-            }
+    db.collection("AskPharmacy").where("UserPhone","==",phone)
+      .onSnapshot(async (snapshot) => {
+        if(!snapshot || snapshot.empty) return;
+        const activeId = String(localStorage.getItem("lastAskId") || "").trim();
+        let chosen = null;
+        snapshot.forEach((doc) => {
+          const d = doc.data() || {};
+          if (activeId && doc.id === activeId) {
+            chosen = { id: doc.id, data: d };
+          } else if (!chosen && targetMed && String(d.medicine || "").trim() === targetMed) {
+            chosen = { id: doc.id, data: d };
+          }
         });
-}
-
-// =========================================================
-// 🌐 ثوابت خاصة بصفحة إضافة صيدلية (لـ add_pharmacy.html)
-// =========================================================
-
-const INITIAL_LAT = 15.6322;
-const INITIAL_LNG = 32.5939;
-
-let map, marker;
-
-function showMessage(msg, isError, isGpsMessage = false) {
-    const box = document.getElementById('errorBox');
-    const successBox = document.getElementById('errorBox');
-    const gpsBox = document.getElementById('gpsMessageBox');
-    const permanentSuccess = document.getElementById('successMessage');
-
-    if (permanentSuccess) permanentSuccess.classList.add('hidden');
-    if (gpsBox) gpsBox.classList.add('hidden');
-
-    if (isGpsMessage) {
-        if (gpsBox) {
-            gpsBox.textContent = msg;
-            gpsBox.classList.remove('hidden');
-            gpsBox.className = isError ? 'gps-error' : 'gps-success';
+        if (!chosen) return;
+        const responses = Array.isArray(chosen.data.responses) ? chosen.data.responses : [];
+        if (responses.length > 0 && typeof applyResponsesDirectlyToCards === "function") {
+          applyResponsesDirectlyToCards(responses, chosen.id);
         }
-        return;
-    }
-
-    if (!isError && msg.includes('تم تحديث الموقع')) {
-        if (successBox) {
-            successBox.className = 'success';
-            successBox.textContent = msg;
-            successBox.style.display = 'block';
-            setTimeout(() => successBox.style.display = 'none', 3000);
-        }
-        return;
-    }
-
-    if (box) {
-        box.className = 'error';
-        box.textContent = msg;
-        box.style.display = 'block';
-    }
-}
-
-function initMap(initialLat, initialLng) {
-    if (map) {
-        map.remove();
-        map = null;
-    }
-
-    const gpsBox = document.getElementById('gpsMessageBox');
-    if (gpsBox) gpsBox.classList.add('hidden');
-
-    const defaultLat = initialLat || INITIAL_LAT;
-    const defaultLng = initialLng || INITIAL_LNG;
-
-    map = L.map('map').setView([defaultLat, defaultLng], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(map);
-
-    marker = L.marker([defaultLat, defaultLng], {
-        draggable: true
-    }).addTo(map);
-
-    marker.on('dragend', function(e) {
-        const coords = marker.getLatLng();
-        document.getElementById('lat').value = coords.lat.toFixed(6);
-        document.getElementById('lng').value = coords.lng.toFixed(6);
-        showMessage('📍 تم تحديث الموقع يدوياً من الخريطة. احفظ الإضافة!', false);
-    });
-
-    map.on('click', function(e) {
-        const coords = e.latlng;
-        marker.setLatLng(coords);
-        document.getElementById('lat').value = coords.lat.toFixed(6);
-        document.getElementById('lng').value = coords.lng.toFixed(6);
-        showMessage('📍 تم تحديث الموقع يدوياً بالنقر. احفظ الإضافة!', false);
-    });
-
-    document.getElementById('lat').value = defaultLat.toFixed(6);
-    document.getElementById('lng').value = defaultLng.toFixed(6);
-
-    setTimeout(() => {
-        if (map) {
-            map.invalidateSize();
-        }
-    }, 50);
-}
-
-async function locateMe() {
-    showMessage('🛰️ جاري محاولة تحديد الموقع عبر GPS...', false, true);
-
-    try {
-        const position = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-                enableHighAccuracy: true, timeout: 7000, maximumAge: 0
-            });
-        });
-
-        const newLat = position.coords.latitude;
-        const newLng = position.coords.longitude;
-
-        map.setView([newLat, newLng], 16);
-        marker.setLatLng([newLat, newLng]);
-
-        document.getElementById('lat').value = newLat.toFixed(6);
-        document.getElementById('lng').value = newLng.toFixed(6);
-
-        showMessage("✅ تم تحديد الموقع التلقائي بنجاح. احفظ الإضافة الآن.", false, true);
-
-    } catch (error) {
-        showMessage(`❌ فشل تحديد الموقع: ${error.message}. يرجى سحب الدبوس الأخضر في الخريطة لتحديد الموقع يدوياً أو النقر على الخريطة.`, true, true);
-    }
-}
-
-async function saveNewPharmacyToFirestore(name, phone, lat, lng, details, offersDelivery = false) {
-    const docRef = db.collection('pharmacies').doc(phone);
-    const existingSnap = await docRef.get();
-
-    const dataToSave = {
-        name: name,
-        phone: phone,
-        lat: lat,
-        lng: lng,
-        details: details || "",
-        delivery: Boolean(offersDelivery),
-    };
-
-    if (existingSnap.exists) {
-        await docRef.update(dataToSave);
-        return 'updated';
-    } else {
-        dataToSave.chatId = "";
-        dataToSave.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        await docRef.set(dataToSave);
-        return 'created';
-    }
-}
-
-function submitPharmacy() {
-    const name = document.getElementById('pharmacyName').value.trim();
-    const phone = document.getElementById('pharmacyPhone').value.trim();
-    const lat = parseFloat(document.getElementById('lat').value);
-    const lng = parseFloat(document.getElementById('lng').value);
-    const details = document.getElementById('pharmacyDetails').value.trim();
-    const submitBtn = document.getElementById('submitPharmacyBtn');
-    const errorBox = document.getElementById('errorBox');
-    const successMsg = document.getElementById('successMessage');
-
-    if (errorBox) errorBox.classList.add('hidden');
-    if (successMsg) successMsg.classList.add('hidden');
-    if (errorBox) errorBox.style.display = 'none';
-    const gpsBox = document.getElementById('gpsMessageBox');
-    if (gpsBox) gpsBox.classList.add('hidden');
-
-    if (!name || !phone || isNaN(lat) || isNaN(lng)) {
-        if (errorBox) {
-            errorBox.innerHTML = "❌ الرجاء تعبئة اسم الصيدلية ورقم الهاتف وتحديد الموقع على الخريطة.";
-            errorBox.classList.remove('hidden');
-            errorBox.style.display = 'block';
-        }
-        return;
-    }
-
-    if (phone.length < 8) {
-        if (errorBox) {
-            errorBox.innerHTML = "❌ رقم الهاتف غير صحيح. الرجاء إدخال رقم صحيح.";
-            errorBox.classList.remove('hidden');
-            errorBox.style.display = 'block';
-        }
-        return;
-    }
-
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'جاري الحفظ...';
-    }
-
-    saveNewPharmacyToFirestore(name, phone, lat, lng, details)
-        .then(status => {
-            if (successMsg) {
-                if (status === 'created') {
-                    successMsg.innerHTML = "✅ **تم إضافة الصيدلية بنجاح!** شكراً لك.";
-                } else if (status === 'updated') {
-                    successMsg.innerHTML = "📝 **تم تحديث بيانات الصيدلية بنجاح!** (باستخدام نفس الرقم). شكراً لك.";
-                }
-                successMsg.classList.remove('hidden');
-            }
-            document.getElementById('pharmacyName').value = '';
-            document.getElementById('pharmacyPhone').value = '';
-            document.getElementById('pharmacyDetails').value = '';
-            initMap(INITIAL_LAT, INITIAL_LNG);
-        })
-        .catch(err => {
-            if (errorBox) {
-                errorBox.innerHTML = `🔥 فشل الحفظ: ${err.message || err.toString()}`;
-                errorBox.classList.remove('hidden');
-                errorBox.style.display = 'block';
-            }
-        })
-        .finally(() => {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'إضافة الصيدلية';
-            }
-        });
-}
-
-function initializeAddPharmacyPage() {
-    if (document.getElementById('map')) {
-        initMap(INITIAL_LAT, INITIAL_LNG);
-    }
-    if (typeof lucide !== 'undefined' && lucide.createIcons) {
-        lucide.createIcons();
-    }
-}
-
+      }, () => {});
+  }
 
 window.addEventListener("load", async () => {
     const pharmContainer = document.getElementById("pharmaciesContainer");
     if (!pharmContainer) return;
 
     const params = new URLSearchParams(window.location.search);
-    const medParam = (params.get("medicine") || localStorage.getItem("lastSearchMedicine") || "").trim();
-    const rangeParam = (params.get("range") || localStorage.getItem("lastSearchRange") || "").trim();
+    const medParam = (params.get("medicine") || "").trim();
+    const rangeParam = (params.get("range") || "").trim();
     const queryIdParam = (params.get("queryId") || params.get("askId") || "").trim();
 
     const medInput = document.getElementById("medicineInput");
@@ -1090,7 +875,6 @@ window.addEventListener("load", async () => {
         }
     }
 });
-
 
 function showIncomingReplyToast(notif) {
     if (!notif || typeof document === "undefined") return;
@@ -1170,4 +954,54 @@ function initAccountNotificationsListener() {
 
 window.addEventListener("DOMContentLoaded", () => {
     initAccountNotificationsListener();
+    if (document.getElementById("pharmaciesContainer")) syncPharmacyCardsFromNotificationsLive();
 });
+
+
+function syncPharmacyCardsFromNotificationsLive(activeAskId = "") {
+  const phone = localStorage.getItem("userPhone") || "";
+  if (!phone || typeof db === "undefined" || !db) return;
+
+  const cleanDigits = (v) => String(v || "").replace(/\D/g, "");
+  const phoneTail9 = (v) => {
+    const d = cleanDigits(v);
+    return d.length > 9 ? d.slice(-9) : d;
+  };
+  const belongsToCurrentPhone = (item, myPhone) => {
+    const myTail = phoneTail9(myPhone);
+    const refPhone = item.userPhone || item.recipientPhone || item.uniqueAccountRef || "";
+    return cleanDigits(refPhone) === cleanDigits(myPhone) || (myTail.length >= 7 && phoneTail9(refPhone) === myTail);
+  };
+
+  if (window.__resultsNotifUnsub) {
+    try { window.__resultsNotifUnsub(); } catch (_) {}
+  }
+
+  window.__resultsNotifUnsub = db.collection("notifications").onSnapshot((snap) => {
+    const params = new URLSearchParams(window.location.search || "");
+    const currentAskId = String(
+      activeAskId ||
+      params.get("askId") ||
+      params.get("queryId") ||
+      localStorage.getItem("lastAskId") ||
+      ""
+    ).trim();
+
+    if (!currentAskId) return;
+
+    const matchedReplies = [];
+    snap.forEach((doc) => {
+      const item = Object.assign({ id: doc.id }, doc.data() || {});
+      if (!belongsToCurrentPhone(item, phone)) return;
+
+      const itemAskId = String(item.askId || item.questionId || item.queryId || "").trim();
+      if (itemAskId && itemAskId === currentAskId) {
+        matchedReplies.push(item);
+      }
+    });
+
+    if (matchedReplies.length && typeof applyResponsesDirectlyToCards === "function") {
+      applyResponsesDirectlyToCards(matchedReplies, currentAskId);
+    }
+  }, () => {});
+}

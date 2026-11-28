@@ -28,7 +28,7 @@ app.use((req, res, next) => {
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
 const SESSIONS_ROOT = path.join(__dirname, "sessions");
-const SESSION_IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+const SESSION_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
 app.use(express.json());
 app.use(express.static(PUBLIC_DIR));
@@ -272,6 +272,36 @@ function extractAskIdFromText(text) {
   return m ? m[1].trim() : null;
 }
 
+
+async function persistWaMessageAskLink(stanzaId, meta) {
+  if (!db || !stanzaId || !meta || !meta.askId) return;
+  try {
+    await db.collection("waQuoteLinks").doc(String(stanzaId)).set({
+      stanzaId: String(stanzaId),
+      askId: String(meta.askId),
+      pharmacyId: String(meta.pharmacyId || ""),
+      pharmacyPhone: String(meta.pharmacyPhone || ""),
+      medicine: String(meta.medicine || ""),
+      createdAt: new Date().toISOString()
+    }, { merge: true });
+  } catch (_) {}
+}
+
+async function lookupWaMessageAskLink(stanzaId) {
+  if (!stanzaId) return null;
+  if (sentQuestionMetaMap.has(stanzaId)) return sentQuestionMetaMap.get(stanzaId);
+  if (!db) return null;
+  try {
+    const snap = await db.collection("waQuoteLinks").doc(String(stanzaId)).get();
+    if (snap && snap.exists) {
+      const d = snap.data() || {};
+      sentQuestionMetaMap.set(stanzaId, d);
+      return d;
+    }
+  } catch (_) {}
+  return null;
+}
+
 function extractQuotedMessageData(message, sess) {
   const unwrapped = unwrapMessage(message);
   if (!unwrapped) return null;
@@ -391,6 +421,7 @@ function getOrCreateSession(sessionId) {
       pairingCode: null,
       manualClose: false,
       idleTimer: null,
+      startingPromise: null,
       sentByBotIds: new Set(),
       sentMessagesStore: new Map(),
       lastAskContext: null,
@@ -407,10 +438,10 @@ function clearSessionTimer(sess) {
   }
 }
 
-function scheduleSessionCloseAfter15Min(sess) {
+function scheduleSessionCloseAfterIdle(sess) {
   clearSessionTimer(sess);
   sess.idleTimer = setTimeout(async () => {
-    console.log(`⏳ انتهت ربع ساعة بدون نشاط للجلسة [${sess.id}] -> إغلاق الجلسة...`);
+    console.log(`⏳ انتهت 5 دقائق بدون نشاط للجلسة [${sess.id}] -> إغلاق الجلسة...`);
     await closeWhatsAppSession(sess.id);
   }, SESSION_IDLE_TIMEOUT_MS);
 }
@@ -423,6 +454,7 @@ async function closeWhatsAppSession(sessionId) {
   sess.manualClose = true;
   if (sess.sock) {
     try {
+      sess.sock.ev.removeAllListeners();
       sess.sock.end(new Error("Session closed after idle timeout or manual close"));
     } catch (_) {}
     sess.sock = null;
@@ -630,9 +662,21 @@ async function handleIncomingPharmacySelfReply(sess, msg) {
   if (sess.sentByBotIds.has(msgId)) return;
   if (!isSelfChatJid(sess, remoteJid)) return;
 
-  scheduleSessionCloseAfter15Min(sess);
+  scheduleSessionCloseAfterIdle(sess);
 
-  const quotedMessageData = extractQuotedMessageData(msg.message, sess);
+  let quotedMessageData = extractQuotedMessageData(msg.message, sess);
+  if (quotedMessageData && quotedMessageData.stanzaId && !quotedMessageData.askId) {
+    const linkedMeta = await lookupWaMessageAskLink(quotedMessageData.stanzaId);
+    if (linkedMeta && linkedMeta.askId) {
+      quotedMessageData = {
+        ...quotedMessageData,
+        askId: linkedMeta.askId,
+        pharmacyId: quotedMessageData.pharmacyId || linkedMeta.pharmacyId || null,
+        pharmacyPhone: quotedMessageData.pharmacyPhone || linkedMeta.pharmacyPhone || null,
+        medicine: quotedMessageData.medicine || linkedMeta.medicine || null,
+      };
+    }
+  }
   const { ownPhone } = getOwnIdentifiers(sess);
   const pharmacyPhone =
     quotedMessageData?.pharmacyPhone ||
@@ -643,9 +687,19 @@ async function handleIncomingPharmacySelfReply(sess, msg) {
   const hasQuotedTarget = Boolean(
     quotedMessageData && (quotedMessageData.stanzaId || quotedMessageData.quotedText || quotedMessageData.askId)
   );
-  const askId = hasQuotedTarget
-    ? quotedMessageData.askId || null
-    : sess.lastAskContext?.askId || null;
+  console.log("🔍 [DEBUG_QUOTE_FLOW]", {
+      msgId,
+      stanzaId: quotedMessageData?.stanzaId,
+      quotedText: quotedMessageData?.quotedText?.slice(0, 60),
+      extractedAskId: quotedMessageData?.askId,
+      lastAskId: sess.lastAskContext?.askId,
+      hasQuotedTarget
+    });
+    if (!hasQuotedTarget) {
+    console.log("⏭️ [" + sess.id + "] تم تجاهل رد بدون اقتباس (مطلوب Reply باقتباس على رسالة السؤال).");
+    return;
+  }
+  const askId = quotedMessageData?.askId || null;
 
   if (!askId) {
     console.warn("⚠️ تعذر تحديد السؤال المستهدف للرد (تأكد من التاغ على رسالة السؤال).");
@@ -718,85 +772,107 @@ async function handleIncomingPharmacySelfReply(sess, msg) {
 async function startWhatsAppSession(sessionId) {
   const sess = getOrCreateSession(sessionId);
   sess.manualClose = false;
-  scheduleSessionCloseAfter15Min(sess);
+  scheduleSessionCloseAfterIdle(sess);
 
   if (sess.sock && sess.status === "connected") {
     return sess;
   }
 
-  await restoreSessionFromFirestoreIfMissing(sess.id);
-  if (!fs.existsSync(sess.authDir)) {
-    fs.mkdirSync(sess.authDir, { recursive: true });
+  if (sess.startingPromise) {
+    return sess.startingPromise;
   }
 
-  const { state, saveCreds } = await useMultiFileAuthState(sess.authDir);
-  const { version } = await fetchLatestBaileysVersion();
-
-  const sock = makeWASocket({
-    version,
-    auth: state,
-    logger: pino({ level: "silent" }),
-    printQRInTerminal: false,
-    getMessage: async (key) => {
-      if (!key?.id) return undefined;
-      return sess.sentMessagesStore.get(key.id);
-    },
-  });
-
-  sess.sock = sock;
-  sock.ev.on("creds.update", async () => {
-    saveCreds();
-    await syncSessionToFirestore(sess.id);
-  });
-
-  sock.ev.on("connection.update", async (update) => {
-    const { connection, lastDisconnect, qr } = update;
-
-    if (qr) {
-      sess.status = "qr";
-      sess.qrDataUrl = await QRCode.toDataURL(qr);
-    }
-
-    if (connection === "open") {
-      syncSessionToFirestore(sess.id).catch(() => {});
-      sess.status = "connected";
-      sess.qrDataUrl = null;
-      sess.pairingCode = null;
-      scheduleSessionCloseAfter15Min(sess);
-      const { ownPhone, ownLid } = getOwnIdentifiers(sess);
-      console.log(`✅ جلسة الصيدلية [${sess.id}] متصلة | الرقم: ${ownPhone || "-"} | LID: ${ownLid || "-"}`);
-      const cbs = sess.onConnectedCallbacks.splice(0);
-      cbs.forEach((cb) => cb(sess));
-    }
-
-    if (connection === "close") {
-      const statusCode = lastDisconnect?.error?.output?.statusCode;
-      sess.sock = null;
-      sess.qrDataUrl = null;
-
-      if (sess.manualClose) {
-        clearSessionTimer(sess);
-        sess.status = "closed";
-        return;
+  sess.startingPromise = (async () => {
+    try {
+      if (sess.sock) {
+        try {
+          sess.sock.ev.removeAllListeners();
+          sess.sock.end(new Error("Restarting session socket"));
+        } catch (_) {}
+        sess.sock = null;
       }
 
-      sess.status = "disconnected";
-      if (statusCode !== DisconnectReason.loggedOut) {
-        setTimeout(() => {
-          if (!sess.manualClose) startWhatsAppSession(sess.id);
-        }, 1500);
+      await restoreSessionFromFirestoreIfMissing(sess.id);
+      if (!fs.existsSync(sess.authDir)) {
+        fs.mkdirSync(sess.authDir, { recursive: true });
       }
-    }
-  });
 
-  sock.ev.on("messages.upsert", async ({ messages }) => {
-    for (const msg of messages) {
-      if (!msg.message) continue;
-      await handleIncomingPharmacySelfReply(sess, msg);
-    }
-  });
+      const { state, saveCreds } = await useMultiFileAuthState(sess.authDir);
+      const { version } = await fetchLatestBaileysVersion();
 
-  return sess;
+      const sock = makeWASocket({
+        version,
+        auth: state,
+        logger: pino({ level: "silent" }),
+        printQRInTerminal: false,
+        getMessage: async (key) => {
+          if (!key?.id) return undefined;
+          return sess.sentMessagesStore.get(key.id);
+        },
+      });
+
+      sess.sock = sock;
+      sock.ev.on("creds.update", async () => {
+        saveCreds();
+        await syncSessionToFirestore(sess.id);
+      });
+
+      sock.ev.on("connection.update", async (update) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+          sess.status = "qr";
+          sess.qrDataUrl = await QRCode.toDataURL(qr);
+        }
+
+        if (connection === "open") {
+          sess.status = "connected";
+          sess.qrDataUrl = null;
+          sess.pairingCode = null;
+          scheduleSessionCloseAfterIdle(sess);
+          syncSessionToFirestore(sess.id, true).catch(() => {});
+          const { ownPhone, ownLid } = getOwnIdentifiers(sess);
+          console.log(`✅ جلسة الصيدلية [${sess.id}] متصلة | الرقم: ${ownPhone || "-"} | LID: ${ownLid || "-"}`);
+          const cbs = sess.onConnectedCallbacks.splice(0);
+          cbs.forEach((cb) => cb(sess));
+        }
+
+        if (connection === "close") {
+          const statusCode = lastDisconnect?.error?.output?.statusCode;
+          sess.sock = null;
+          sess.qrDataUrl = null;
+
+          if (sess.manualClose) {
+            clearSessionTimer(sess);
+            sess.status = "closed";
+            return;
+          }
+
+          sess.status = "disconnected";
+          if (statusCode !== DisconnectReason.loggedOut) {
+            setTimeout(() => {
+              if (!sess.manualClose && sess.status !== "connected") {
+                startWhatsAppSession(sess.id).catch(() => {});
+              }
+            }, 2500);
+          }
+        }
+      });
+
+      sock.ev.on("messages.upsert", async ({ messages }) => {
+        for (const msg of messages) {
+          if (!msg.message) continue;
+          await handleIncomingPharmacySelfReply(sess, msg);
+        }
+      });
+
+      return sess;
+    } finally {
+      sess.startingPromise = null;
+    }
+  })();
+
+  return sess.startingPromise;
 }
 
 async function buildPharmacySessionStatuses() {
@@ -826,9 +902,9 @@ async function buildPharmacySessionStatuses() {
       ? "غير متصل"
       : sessionStatus === "closed"
       ? "راسلني واتساب"
-      : !isWhatsappConnected
-      ? "غير متصل"
-      : null;
+      : isWhatsappConnected
+      ? "متصل"
+      : "جاري الاتصال";
 
     return {
       pharmacyId: ph.id,
@@ -1089,9 +1165,15 @@ app.get("/api/sessions", (req, res) => {
     const hasCreds = fs.existsSync(path.join(dir, "creds.json"));
     const s = sessionsMap.get(id);
     const ids = getOwnIdentifiers(s);
+
+    if (hasCreds && s && s.status === "closed" && !s.startingPromise) {
+      startWhatsAppSession(id).catch(() => {});
+    }
+
     return {
       id,
       hasCreds,
+      connected: Boolean(s && s.status === "connected" && s.sock),
       status: s ? s.status : hasCreds ? "saved" : "disconnected",
       ownPhone: ids.ownPhone || "",
       pairingCode: s?.pairingCode || null,
@@ -1103,6 +1185,7 @@ app.get("/api/sessions", (req, res) => {
     ok: true,
     sessionId: activeId,
     sessions,
+    connected: Boolean(currentSess && currentSess.status === "connected" && currentSess.sock),
     status: currentSess ? currentSess.status : "disconnected",
     ownPhone,
     ownLid,
@@ -1148,7 +1231,7 @@ async function handleAskPharmacy({ medicine, userPhone, askId, lat, lng, range }
     try {
       const sess = await startWhatsAppSession(entry.sessionId);
       await waitUntilReady(sess, 15000);
-      scheduleSessionCloseAfter15Min(sess);
+      scheduleSessionCloseAfterIdle(sess);
 
       const targetSelfJid = resolveSelfTargetJid(sess, entry);
       if (!targetSelfJid) {
@@ -1193,9 +1276,16 @@ async function handleAskPharmacy({ medicine, userPhone, askId, lat, lng, range }
           medicine,
           messageText,
         });
+        persistWaMessageAskLink(sentMsg.key.id, {
+          askId,
+          pharmacyId: phId,
+          pharmacyPhone: resolvedPhone,
+          medicine,
+          messageText,
+        }).catch(() => {});
       }
 
-      scheduleSessionCloseAfter15Min(sess);
+      scheduleSessionCloseAfterIdle(sess);
       sentCount++;
       console.log(`📤 [${entry.sessionId}] أرسل السؤال لنفسه (${targetSelfJid})`);
     } catch (err) {
@@ -1270,6 +1360,8 @@ app.listen(PORT, async () => {
   console.log(`🚀 السيرفر شغال من نفس المجلد على http://localhost:${PORT}`);
   const saved = listSavedSessionEntries();
   saved.forEach((entry) => {
-    startWhatsAppSession(entry.sessionId).catch((e) => console.error(e));
+    startWhatsAppSession(entry.sessionId).catch((e) => {
+      console.warn(`⚠️ تعذر تشغيل الجلسة [${entry.sessionId}] عند البدء:`, e.message);
+    });
   });
 });

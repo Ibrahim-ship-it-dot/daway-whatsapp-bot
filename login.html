@@ -13,106 +13,69 @@
         /* تهيئة شاشة الدخول فقط */
         body {
             background: var(--bg-light);
-            display:flex;
-            justify-content:center;
-            align-items:center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             min-height: 100vh;
             margin: 0;
             padding: 16px;
             flex-direction: column;
         }
         #loginContainer {
-            background:white;
-            padding:26px 20px;
-            border-radius:15px;
-            max-width:380px;
-            width:92%;
-            text-align:center;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+            background: white;
+            padding: 26px 20px;
+            border-radius: 15px;
+            max-width: 380px;
+            width: 92%;
+            text-align: center;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
             margin-bottom: 16px;
         }
-        .account-type-group {
+        /* تابات نوع الحساب (تابين واضحين للتنقل بالضغط) */
+        .account-tabs-bar {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 8px;
             margin: 12px 0 16px;
-        }
-        .account-type-btn {
-            padding: 10px 8px;
-            border: 2px solid #cbd5e1;
-            border-radius: 10px;
-            background: #f8fafc;
-            color: #1e293b;
-            font-family: 'Cairo', sans-serif;
-            font-size: 13.5px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .account-type-btn.active {
-            border-color: #00bcd4;
-            background: #e0f7fa;
-            color: #006064;
-        }
-        #pharmacistSection {
-            display: none;
-            background: #f8fafc;
+            padding: 5px;
+            background: #eef2f6;
+            border-radius: 12px;
             border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 12px;
-            text-align: right;
         }
-        #pharmacistSection label {
-            display: block;
+        .account-tab-btn {
+            padding: 10px 8px;
+            border: 1.5px solid transparent;
+            border-radius: 9px;
+            background: transparent;
+            color: #475569;
+            font-family: 'Cairo', sans-serif;
             font-size: 13px;
             font-weight: 700;
-            color: #0f172a;
-            margin-bottom: 5px;
-        }
-        .ph-field-input {
-            width: 100%;
-            padding: 10px;
-            font-size: 14px;
-            font-family: 'Cairo', sans-serif;
-            border: 1.5px solid #cbd5e1;
-            border-radius: 8px;
-            box-sizing: border-box;
-            margin-bottom: 10px;
-            background: #fff;
-        }
-        .ethics-box {
-            background: #ffffff;
-            border: 1px dashed #0284c7;
-            border-radius: 8px;
-            padding: 10px;
-            font-size: 12px;
-            line-height: 1.65;
-            color: #334155;
-            margin-bottom: 10px;
-        }
-        .ethics-agree-row {
+            cursor: pointer;
+            transition: all 0.18s ease;
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 12.5px;
-            font-weight: 700;
-            color: #0f172a;
-            cursor: pointer;
+            justify-content: center;
+            gap: 5px;
         }
-        .ethics-agree-row input {
-            width: 17px;
-            height: 17px;
-            cursor: pointer;
-            flex-shrink: 0;
+        .account-tab-btn:hover {
+            background: rgba(255, 255, 255, 0.65);
+            color: #0f172a;
+        }
+        .account-tab-btn.active {
+            background: #ffffff;
+            border-color: #00bcd4;
+            color: #006064;
+            font-weight: 800;
+            box-shadow: 0 3px 8px rgba(0, 188, 212, 0.18);
         }
         #phoneInput {
-            width:100%;
-            padding:12px;
-            margin:10px 0;
-            font-size:16px;
-            border:2px solid #ddd;
-            border-radius:8px;
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
             text-align: center;
             box-sizing: border-box;
             direction: ltr;
@@ -129,7 +92,7 @@
             width: 90%;
             margin: 14px auto 0;
             text-align: center;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         .download-hint-bar a {
             color: #ffeb3b;
@@ -148,13 +111,13 @@
 <body>
 <div id="loginContainer">
     <img src="images/daway_sudan_logo.png" alt="شعار دواي سودان" style="width: 135px; margin-bottom: 12px;">
-    <h3 style="margin: 6px 0 8px;">ما نوع حسابك؟</h3>
+    <h3 style="margin: 6px 0 6px;">ما نوع حسابك؟</h3>
 
-    <div class="account-type-group">
-        <button type="button" id="btnTypeUser" class="account-type-btn active" onclick="selectAccountType('user')">
+    <div class="account-tabs-bar" role="tablist" aria-label="اختيار نوع الحساب">
+        <button type="button" id="btnTypeUser" role="tab" aria-selected="true" class="account-tab-btn active" onclick="selectAccountType('user')">
             🔍 أبحث عن دواء
         </button>
-        <button type="button" id="btnTypePharmacist" class="account-type-btn" onclick="selectAccountType('pharmacist')">
+        <button type="button" id="btnTypePharmacist" role="tab" aria-selected="false" class="account-tab-btn" onclick="selectAccountType('pharmacist')">
             💊 حساب صيدلي
         </button>
     </div>
@@ -162,29 +125,7 @@
     <h4 style="margin: 8px 0 4px;">أدخل رقم هاتفك للمتابعة</h4>
     <input type="tel" id="phoneInput" inputmode="numeric" maxlength="12" placeholder="249XXXXXXXXX" oninput="onPhoneFieldInput(this)">
 
-    <div id="pharmacistSection">
-        <p style="margin: 0 0 10px; font-size: 12.5px; color: #006064; font-weight: 700;">
-            هذا الرقم غير مسجل كصيدلية مسبقاً — يرجى إكمال البيانات التالية:
-        </p>
-
-        <label for="pharmacyNameInput">اسم الصيدلية:</label>
-        <input type="text" id="pharmacyNameInput" class="ph-field-input" placeholder="مثال: صيدلية الشفاء">
-
-        <label for="pharmacyOwnerInput">اسم صاحب الصيدلية:</label>
-        <input type="text" id="pharmacyOwnerInput" class="ph-field-input" placeholder="مثال: د. أحمد محمد">
-
-        <div class="ethics-box">
-            <strong>ميثاق الأمانة والأخلاق المهنية:</strong><br>
-            أقر وأشهد بالله العظيم أنني صيدلي مختص، وأتعهد بالالتزام بالأخلاق المهنية العالية، والصدق في بيان توفر الدواء أو عدم توفره، واحترام خصوصية السائلين وسرعة التجاوب دون أي استغلال أو تضليل.
-        </div>
-
-        <label class="ethics-agree-row">
-            <input type="checkbox" id="ethicsAgreeCheckbox">
-            <span>موافق وأشهد على التزامي بالأخلاق المهنية</span>
-        </label>
-    </div>
-
-    <button id="savePhoneButton" onclick="handleLoginSubmit()">تأكيد</button>
+    <button id="savePhoneButton" onclick="handleLoginSubmit()">تسجيل الدخول</button>
     <p id="phoneError" style="color:#c62828; font-size:13px; font-weight:700; min-height:20px; margin:8px 0 4px;"></p>
     <p style="font-size:12px; color:#555; margin:4px 0 0;">(يجب أن يبدأ بـ 249 ويكون 12 رقماً مثل 249XXXXXXXXX)</p>
 
@@ -199,35 +140,23 @@
 <script src="script.js"></script>
 <script>
     let selectedAccountType = 'user';
-    let pharmacistDetailsVisible = false;
-    let lastCheckedPhPhone = '';
-    let phLookupTimeout = null;
-
-    function setPharmacistDetailsVisibility(show) {
-        pharmacistDetailsVisible = Boolean(show);
-        const phSec = document.getElementById('pharmacistSection');
-        if (phSec) {
-            phSec.style.display = (selectedAccountType === 'pharmacist' && pharmacistDetailsVisible) ? 'block' : 'none';
-        }
-    }
 
     function selectAccountType(type) {
         selectedAccountType = type === 'pharmacist' ? 'pharmacist' : 'user';
+        const isPh = selectedAccountType === 'pharmacist';
         const btnUser = document.getElementById('btnTypeUser');
         const btnPh = document.getElementById('btnTypePharmacist');
         const errEl = document.getElementById('phoneError');
 
-        if (btnUser) btnUser.classList.toggle('active', selectedAccountType === 'user');
-        if (btnPh) btnPh.classList.toggle('active', selectedAccountType === 'pharmacist');
-        if (errEl) errEl.textContent = '';
-
-        setPharmacistDetailsVisibility(false);
-        if (selectedAccountType === 'pharmacist') {
-            const pVal = (document.getElementById('phoneInput')?.value || '').trim();
-            if (isValidSudan12Phone(pVal)) {
-                checkExistingPharmacyRecord(pVal, false);
-            }
+        if (btnUser) {
+            btnUser.classList.toggle('active', !isPh);
+            btnUser.setAttribute('aria-selected', String(!isPh));
         }
+        if (btnPh) {
+            btnPh.classList.toggle('active', isPh);
+            btnPh.setAttribute('aria-selected', String(isPh));
+        }
+        if (errEl) errEl.textContent = '';
     }
 
     function sanitizeSudanPhoneInput(inputEl) {
@@ -243,60 +172,10 @@
         return /^249\d{9}$/.test(String(digits || ''));
     }
 
-    async function findExistingPharmacyByPhone(phone) {
-        if (typeof db === 'undefined' || !db || !phone) return null;
-        try {
-            const directDoc = await db.collection('pharmacies').doc(phone).get();
-            if (directDoc.exists) {
-                return { id: directDoc.id, ...(directDoc.data() || {}) };
-            }
-            const querySnap = await db.collection('pharmacies').where('phone', '==', phone).limit(1).get();
-            if (!querySnap.empty) {
-                const d = querySnap.docs[0];
-                return { id: d.id, ...(d.data() || {}) };
-            }
-        } catch (_) {}
-        return null;
-    }
-
-    async function checkExistingPharmacyRecord(phone, autoRedirectIfFound) {
-        if (!isValidSudan12Phone(phone)) return null;
-        if (lastCheckedPhPhone === phone && !autoRedirectIfFound) return null;
-        lastCheckedPhPhone = phone;
-
-        const existing = await findExistingPharmacyByPhone(phone);
-        if (existing) {
-            localStorage.setItem('userPhone', phone);
-            localStorage.setItem('accountType', 'pharmacist');
-            if (existing.name) localStorage.setItem('pharmacyName', String(existing.name));
-            if (existing.ownerName) localStorage.setItem('pharmacyOwner', String(existing.ownerName));
-            setPharmacistDetailsVisibility(false);
-            if (autoRedirectIfFound) {
-                window.location.href = 'addph.html';
-            }
-            return existing;
-        } else {
-            setPharmacistDetailsVisibility(true);
-            return null;
-        }
-    }
-
     function onPhoneFieldInput(inputEl) {
-        const digits = sanitizeSudanPhoneInput(inputEl);
+        sanitizeSudanPhoneInput(inputEl);
         const errEl = document.getElementById('phoneError');
         if (errEl) errEl.textContent = '';
-
-        if (selectedAccountType === 'pharmacist') {
-            if (phLookupTimeout) clearTimeout(phLookupTimeout);
-            if (isValidSudan12Phone(digits)) {
-                phLookupTimeout = setTimeout(() => {
-                    checkExistingPharmacyRecord(digits, false);
-                }, 250);
-            } else {
-                lastCheckedPhPhone = '';
-                setPharmacistDetailsVisibility(false);
-            }
-        }
     }
 
     async function handleLoginSubmit() {
@@ -317,88 +196,31 @@
 
         if (saveBtn) {
             saveBtn.disabled = true;
-            saveBtn.textContent = '⏳ جاري التحقق...';
+            saveBtn.textContent = '⏳ جاري الدخول...';
         }
 
         try {
+            const nowIso = new Date().toISOString();
+            localStorage.setItem('userPhone', phone);
+
             if (selectedAccountType === 'pharmacist') {
-                const existingPh = await findExistingPharmacyByPhone(phone);
-                if (existingPh) {
-                    localStorage.setItem('userPhone', phone);
-                    localStorage.setItem('accountType', 'pharmacist');
-                    if (existingPh.name) localStorage.setItem('pharmacyName', String(existingPh.name));
-                    if (existingPh.ownerName) localStorage.setItem('pharmacyOwner', String(existingPh.ownerName));
-                    window.location.href = 'addph.html';
-                    return;
-                }
-
-                if (!pharmacistDetailsVisible) {
-                    setPharmacistDetailsVisibility(true);
-                    if (saveBtn) {
-                        saveBtn.disabled = false;
-                        saveBtn.textContent = 'تأكيد';
-                    }
-                    if (errEl) errEl.textContent = 'الرقم غير مسجل كصيدلية؛ يرجى إدخال اسم الصيدلية واسم صاحب الصيدلية والموافقة على الميثاق.';
-                    document.getElementById('pharmacyNameInput')?.focus();
-                    return;
-                }
-
-                const nameInput = document.getElementById('pharmacyNameInput');
-                const ownerInput = document.getElementById('pharmacyOwnerInput');
-                const agreeBox = document.getElementById('ethicsAgreeCheckbox');
-
-                const pharmacyName = (nameInput ? nameInput.value : '').trim();
-                const pharmacyOwner = (ownerInput ? ownerInput.value : '').trim();
-                const ethicsAgreed = Boolean(agreeBox && agreeBox.checked);
-
-                if (!pharmacyName) {
-                    if (errEl) errEl.textContent = 'يرجى كتابة اسم الصيدلية أولاً.';
-                    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'تأكيد'; }
-                    if (nameInput) nameInput.focus();
-                    return;
-                }
-                if (!pharmacyOwner) {
-                    if (errEl) errEl.textContent = 'يرجى كتابة اسم صاحب الصيدلية أولاً.';
-                    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'تأكيد'; }
-                    if (ownerInput) ownerInput.focus();
-                    return;
-                }
-                if (!ethicsAgreed) {
-                    if (errEl) errEl.textContent = 'يرجى الضغط على موافق والإقرار بالالتزام بالأخلاق المهنية للمتابعة.';
-                    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'تأكيد'; }
-                    return;
-                }
-
-                if (saveBtn) saveBtn.textContent = '⏳ جاري الحفظ...';
-                const nowIso = new Date().toISOString();
-
-                localStorage.setItem('userPhone', phone);
                 localStorage.setItem('accountType', 'pharmacist');
-                localStorage.setItem('pharmacyName', pharmacyName);
-                localStorage.setItem('pharmacyOwner', pharmacyOwner);
-                localStorage.removeItem('pharmacyDepartment');
-                localStorage.setItem('pharmacistEthicsAgreed', 'true');
 
                 if (typeof db !== 'undefined' && db) {
-                    await db.collection('users').doc(phone).set({
-                        phone: phone,
-                        accountType: 'pharmacist',
-                        role: 'pharmacist',
-                        pharmacyName: pharmacyName,
-                        pharmacyOwner: pharmacyOwner,
-                        ethicsAgreed: true,
-                        updatedAt: nowIso,
-                        createdAt: nowIso
-                    }, { merge: true });
-
-                    await db.collection('pharmacies').doc(phone).set({
-                        phone: phone,
-                        name: pharmacyName,
-                        ownerName: pharmacyOwner,
-                        ethicsAgreed: true,
-                        accountType: 'pharmacist',
-                        updatedAt: nowIso
-                    }, { merge: true });
+                    try {
+                        const phSnap = await db.collection('pharmacies').doc(phone).get();
+                        if (phSnap.exists) {
+                            const d = phSnap.data() || {};
+                            if (d.name) localStorage.setItem('pharmacyName', String(d.name));
+                            if (d.ownerName) localStorage.setItem('pharmacyOwner', String(d.ownerName));
+                        }
+                        await db.collection('users').doc(phone).set({
+                            phone: phone,
+                            accountType: 'pharmacist',
+                            role: 'pharmacist',
+                            updatedAt: nowIso
+                        }, { merge: true });
+                    } catch (_) {}
                 }
 
                 window.location.href = 'addph.html';
@@ -406,30 +228,28 @@
             }
 
             // حساب مستخدم عادي (باحث عن دواء)
-            if (saveBtn) saveBtn.textContent = '⏳ جاري الحفظ...';
-            const nowIso = new Date().toISOString();
-            localStorage.setItem('userPhone', phone);
             localStorage.setItem('accountType', 'user');
             localStorage.removeItem('pharmacyName');
             localStorage.removeItem('pharmacyOwner');
             localStorage.removeItem('pharmacyDepartment');
 
             if (typeof db !== 'undefined' && db) {
-                await db.collection('users').doc(phone).set({
-                    phone: phone,
-                    accountType: 'user',
-                    role: 'user',
-                    updatedAt: nowIso,
-                    createdAt: nowIso
-                }, { merge: true });
+                try {
+                    await db.collection('users').doc(phone).set({
+                        phone: phone,
+                        accountType: 'user',
+                        role: 'user',
+                        updatedAt: nowIso
+                    }, { merge: true });
+                } catch (_) {}
             }
 
             window.location.href = 'index.html';
         } catch (err) {
-            if (errEl) errEl.textContent = 'تعذر حفظ بيانات الحساب: ' + (err.message || err);
+            if (errEl) errEl.textContent = 'تعذر تسجيل الدخول: ' + (err.message || err);
             if (saveBtn) {
                 saveBtn.disabled = false;
-                saveBtn.textContent = 'تأكيد';
+                saveBtn.textContent = 'تسجيل الدخول';
             }
         }
     }
@@ -448,5 +268,6 @@
         } catch (_) {}
     };
 </script>
+<script src="sidebar-menu.js"></script>
 </body>
 </html>

@@ -174,164 +174,153 @@
 
 <script>
   (function fastAskPharmacyLiveSync() {
-    function bindLiveAsk() {
-      if (typeof db === "undefined" || !db || window.__fastAskLiveBound) return;
-      const phone = String(localStorage.getItem("userPhone") || "").trim();
-      const params = new URLSearchParams(window.location.search || "");
-      const askId = String(params.get("askId") || params.get("queryId") || localStorage.getItem("lastAskId") || "").trim();
-      if (!phone && !askId) return;
-      window.__fastAskLiveBound = true;
+    let askUnsub = null;
+    let notifUnsub = null;
+    let askResponses = [];
+    let notifResponses = [];
+    let activeAskId = "";
+    let activeMedicine = "";
 
-      const applyDoc = async (snap) => {
-        if (!snap || !snap.exists) return;
-        const data = snap.data() || {};
-        const responses = Array.isArray(data.responses) ? data.responses : [];
-        const medName = String(data.medicine || document.getElementById("medicineInput")?.value || params.get("medicine") || "").trim();
-        const container = document.getElementById("pharmaciesContainer");
-        if (container && !container.querySelector(".pharmacy") && medName && typeof displayPharmacies === "function") {
-          await displayPharmacies(snap.id, medName, responses).catch(() => {});
+    function cleanPhone(v) {
+      return String(v || "").replace(/\D/g, "");
+    }
+    function tail9(v) {
+      const d = cleanPhone(v);
+      return d.length > 9 ? d.slice(-9) : d;
+    }
+    function sameAccount(itemPhone, myPhone) {
+      const a = cleanPhone(itemPhone);
+      const b = cleanPhone(myPhone);
+      if (!a || !b) return false;
+      if (a === b) return true;
+      const ta = tail9(a);
+      const tb = tail9(b);
+      return ta.length >= 7 && ta === tb;
+    }
+
+    function getReplyId(r) {
+      if (!r || typeof r !== "object") return "";
+      return String(r.id || r.replyId || r.stanzaId || r.messageId || "").trim();
+    }
+
+    function getTargetIdFromUrl() {
+      const params = new URLSearchParams(window.location.search || "");
+      return String(params.get("askId") || params.get("queryId") || "").trim();
+    }
+
+    function mergeAndApply() {
+      if (!activeAskId) return;
+
+      const byIdMap = new Map();
+      const fallbackList = [];
+
+      [...askResponses, ...notifResponses].forEach((r) => {
+        if (!r || typeof r !== "object") return;
+        const rAskId = String(r.askId || r.questionId || r.queryId || "").trim();
+        if (!rAskId || rAskId !== activeAskId) return;
+
+        const rid = getReplyId(r);
+        if (rid) {
+          byIdMap.set(rid, r);
+        } else {
+          fallbackList.push(r);
         }
-        if (responses.length > 0 && typeof applyResponsesDirectlyToCards === "function") {
-          applyResponsesDirectlyToCards(responses, snap.id);
+      });
+
+      const combined = [...Array.from(byIdMap.values()), ...fallbackList];
+      if (!combined.length) return;
+
+      const med = String(activeMedicine || document.getElementById("medicineInput")?.value || new URLSearchParams(window.location.search || "").get("medicine") || "").trim();
+      const container = document.getElementById("pharmaciesContainer");
+
+      const run = () => {
+        if (typeof applyResponsesDirectlyToCards === "function") {
+          applyResponsesDirectlyToCards(combined, activeAskId);
         }
       };
 
-      if (askId) {
-        db.collection("AskPharmacy").doc(askId).onSnapshot((snap) => applyDoc(snap), () => {});
+      if (container && !container.querySelector(".pharmacy") && med && typeof displayPharmacies === "function") {
+        displayPharmacies(activeAskId, med, combined).then(run).catch(run);
+      } else {
+        run();
       }
+    }
 
-      if (phone) {
-        db.collection("AskPharmacy").where("UserPhone", "==", phone).onSnapshot((snap) => {
-          if (!snap || snap.empty) return;
-          let latest = null;
-          snap.forEach((doc) => {
-            const d = doc.data() || {};
-            const t = d.updatedAt || (d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : String(d.createdAt || ""));
-            const prevT = latest ? (latest.data.updatedAt || (latest.data.createdAt && latest.data.createdAt.toDate ? latest.data.createdAt.toDate().toISOString() : String(latest.data.createdAt || ""))) : "";
-            if (!latest || t >= prevT) latest = { id: doc.id, data: d };
-          });
-          if (latest) {
-            const responses = Array.isArray(latest.data.responses) ? latest.data.responses : [];
-            if (responses.length > 0 && typeof applyResponsesDirectlyToCards === "function") {
-              applyResponsesDirectlyToCards(responses, latest.id);
-            }
+    function bindAskDoc(docId) {
+      const cleanId = String(docId || "").trim();
+      if (typeof db === "undefined" || !db || !cleanId) return;
+      if (cleanId.startsWith("pending_") || cleanId.startsWith("ask_")) return;
+      if (activeAskId === cleanId && askUnsub) return;
+
+      activeAskId = cleanId;
+      askResponses = [];
+      notifResponses = [];
+      if (typeof resetCardsToPendingState === "function") resetCardsToPendingState();
+
+      if (askUnsub) { try { askUnsub(); } catch (_) {} }
+      askUnsub = db.collection("AskPharmacy").doc(cleanId).onSnapshot((snap) => {
+        if (!snap || !snap.exists) return;
+        const d = snap.data() || {};
+        if (d.medicine) activeMedicine = String(d.medicine).trim();
+        askResponses = Array.isArray(d.responses) ? d.responses : [];
+        mergeAndApply();
+      }, () => {});
+    }
+
+    function bindUserNotifications() {
+      const myPhone = localStorage.getItem("userPhone") || "";
+      if (typeof db === "undefined" || !db || !myPhone || notifUnsub) return;
+
+      notifUnsub = db.collection("notifications").onSnapshot((snap) => {
+        if (!activeAskId) {
+          notifResponses = [];
+          return;
+        }
+        const list = [];
+        snap.forEach((doc) => {
+          const d = Object.assign({ id: doc.id }, doc.data() || {});
+          const ownerRef = d.userPhone || d.recipientPhone || d.uniqueAccountRef || "";
+          if (!sameAccount(ownerRef, myPhone)) return;
+
+          const itemAskId = String(d.askId || d.questionId || d.queryId || "").trim();
+          if (itemAskId && itemAskId === activeAskId) {
+            list.push(d);
           }
-        }, () => {});
-      }
+        });
+        notifResponses = list;
+        mergeAndApply();
+      }, () => {});
+    }
+
+    window.__bindLiveAskDoc = bindAskDoc;
+
+    function boot() {
+      const params = new URLSearchParams(window.location.search || "");
+      const urlMed = String(params.get("medicine") || "").trim();
+      if (urlMed) activeMedicine = urlMed;
+      const urlId = getTargetIdFromUrl();
+      const storedId = urlMed ? "" : String(localStorage.getItem("lastAskId") || "").trim();
+      const id = urlId || storedId;
+      if (id) bindAskDoc(id);
+      bindUserNotifications();
     }
 
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", bindLiveAsk);
+      document.addEventListener("DOMContentLoaded", boot);
     } else {
-      bindLiveAsk();
+      boot();
     }
-    setTimeout(bindLiveAsk, 300);
+
+    setInterval(() => {
+      const urlMed = String(new URLSearchParams(window.location.search || "").get("medicine") || "").trim();
+      const id = getTargetIdFromUrl() || (urlMed ? "" : String(localStorage.getItem("lastAskId") || "").trim());
+      if (id && id !== activeAskId) bindAskDoc(id);
+      if (!notifUnsub) bindUserNotifications();
+    }, 1500);
   })();
 </script>
 
-
-<script>
-  (async function syncResultsMenuExactlyLikeIndex() {
-    const ADMIN_PHONE = "249128514785";
-    const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
-    const tail9 = (v) => {
-      const d = digitsOnly(v);
-      return d.length > 9 ? d.slice(-9) : d;
-    };
-
-    const menuItems = [
-      { href: "pharmacist-replies.html", label: "📩 الرد على الأسئلة الواردة", bg: "#0369a1", role: "pharmacist" },
-      { href: "profile.html", label: "⚙️ تعديل الملف الشخصي والموقع", bg: "#495057", role: "all" },
-      { href: "history.html", label: "📜 اسئلتي السابقه", bg: "#0284c7", role: "all" },
-      { href: "notifications.html", label: "🔔 الإشعارات", bg: "#475569", role: "all" },
-      { href: "addph.html", label: "✏️ تعديل بيانات الصيدلية", bg: "#0f766e", role: "pharmacist" },
-      { href: "pharmacies.html", label: "🏥 إدارة الصيدليات وجلسات الواتساب", bg: "#0f766e", role: "admin" }
-    ];
-
-    function buildMenuInSidebar(isAdmin, isPharmacist, phName, digits) {
-      const sessionEl = document.getElementById("sessionInfo");
-      if (sessionEl) {
-        sessionEl.textContent = (isPharmacist && phName) ? phName : (digits || "غير مسجل");
-      }
-
-      const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
-      sidebars.forEach((sb) => {
-        const prevContainer = sb.querySelector("#previousQuestionsContainer");
-
-        // إزالة الروابط القديمة غير الموجودة في قائمة index حتى لا تتكدس
-        sb.querySelectorAll("a").forEach((a) => {
-          const h = a.getAttribute("href") || "";
-          if (!menuItems.some((m) => m.href === h)) {
-            a.remove();
-          }
-        });
-
-        menuItems.forEach((item, idx) => {
-          let link = sb.querySelector('a[href="' + item.href + '"]');
-          if (!link) {
-            link = document.createElement("a");
-            link.href = item.href;
-          }
-          if (item.href === "pharmacies.html") {
-            link.id = "adminPharmaciesLink";
-          }
-          link.textContent = item.label;
-          link.style.cssText = "font-weight: bold; background: " + item.bg + "; color: white;";
-          link.setAttribute("data-menu-order", String(idx));
-
-          if (prevContainer) {
-            sb.insertBefore(link, prevContainer);
-          } else {
-            sb.appendChild(link);
-          }
-
-          if (item.role === "admin") {
-            link.style.setProperty("display", isAdmin ? "block" : "none", "important");
-          } else if (item.role === "pharmacist") {
-            link.style.setProperty("display", (isPharmacist || isAdmin) ? "block" : "none", "important");
-          } else {
-            link.style.setProperty("display", "block", "important");
-          }
-        });
-      });
-    }
-
-    const digits = digitsOnly(localStorage.getItem("userPhone") || "");
-    const isAdmin = Boolean(digits) && (
-      digits === ADMIN_PHONE ||
-      (tail9(digits).length === 9 && tail9(digits) === tail9(ADMIN_PHONE))
-    );
-
-    let isPharmacist = localStorage.getItem("accountType") === "pharmacist";
-    let phName = String(localStorage.getItem("pharmacyName") || "").trim();
-
-    buildMenuInSidebar(isAdmin, isPharmacist, phName, digits);
-
-    if (digits && typeof db !== "undefined" && db) {
-      try {
-        const dSnap = await db.collection("pharmacies").doc(digits).get();
-        if (dSnap.exists) {
-          const d = dSnap.data() || {};
-          isPharmacist = true;
-          phName = String(d.name || d.pharmacyName || phName || "").trim();
-        }
-        if (!isPharmacist) {
-          const qSnap = await db.collection("pharmacies").where("phone", "==", digits).limit(1).get();
-          if (!qSnap.empty) {
-            const d = qSnap.docs[0].data() || {};
-            isPharmacist = true;
-            phName = String(d.name || d.pharmacyName || phName || "").trim();
-          }
-        }
-      } catch (_) {}
-    }
-
-    if (isPharmacist) localStorage.setItem("accountType", "pharmacist");
-    if (phName) localStorage.setItem("pharmacyName", phName);
-
-    buildMenuInSidebar(isAdmin, isPharmacist, phName, digits);
-  })();
-</script>
+<script src="sidebar-menu.js"></script>
 
 </body>
 </html>

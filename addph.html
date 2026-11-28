@@ -18,22 +18,30 @@
         .step-indicator {
             display: flex;
             justify-content: space-between;
-            gap: 8px;
-            margin-bottom: 20px;
+            gap: 5px;
+            margin-bottom: 14px;
         }
         .step-badge {
             flex: 1;
             text-align: center;
-            padding: 8px 6px;
-            border-radius: 8px;
-            font-size: 12.5px;
-            font-weight: 700;
-            background: #e9ecef;
-            color: #495057;
+            padding: 5px 4px;
+            border-radius: 6px;
+            font-size: 10.5px !important;
+            font-weight: 700 !important;
+            background: #e9ecef !important;
+            color: #495057 !important;
+            border: 1px solid #cbd5e1 !important;
+            cursor: pointer !important;
+            width: auto !important;
+            max-width: none !important;
+            line-height: 1.35 !important;
+            box-shadow: none !important;
+            transition: all 0.15s ease;
         }
         .step-badge.active {
-            background: var(--primary-color);
-            color: #fff;
+            background: var(--primary-color) !important;
+            color: #fff !important;
+            border-color: var(--primary-color) !important;
         }
         .wizard-step {
             display: none;
@@ -56,6 +64,11 @@
         }
         .btn-next {
             background: var(--secondary-color) !important;
+        }
+        .btn-save-edit {
+            background: linear-gradient(135deg, #0f766e, #0d9488) !important;
+            color: #fff !important;
+            font-weight: 800 !important;
         }
         .existing-notice {
             background: #fff8e1;
@@ -90,6 +103,37 @@
             background: #fef3c7;
             border: 1px solid #fcd34d;
             color: #92400e;
+        }
+        .wa-success-box {
+            margin-top: 10px;
+            background: #ecfdf5;
+            border: 1px solid #6ee7b7;
+            border-radius: 12px;
+            padding: 14px 12px;
+            text-align: center;
+        }
+        .wa-success-title {
+            color: #065f46;
+            font-size: 16px;
+            font-weight: 800;
+            margin: 0 0 8px 0;
+        }
+        .wa-trouble-link-btn {
+            background: none !important;
+            border: none !important;
+            color: #0369a1 !important;
+            font-size: 12.5px !important;
+            font-weight: 700 !important;
+            text-decoration: underline !important;
+            cursor: pointer !important;
+            padding: 4px 8px !important;
+            width: auto !important;
+            max-width: none !important;
+            box-shadow: none !important;
+            display: inline-block;
+        }
+        .wa-trouble-link-btn:hover {
+            color: #b91c1c !important;
         }
         .wa-connect-panel {
             margin-top: 12px;
@@ -212,55 +256,54 @@
             margin-bottom: 4px;
         }
         .readiness-panel {
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            padding: 8px 10px;
-            margin-bottom: 12px;
-            text-align: right;
+            background: #f8fafc !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            padding: 6px 8px !important;
+            margin-bottom: 8px !important;
+            text-align: right !important;
         }
         .readiness-title {
-            font-size: 12.5px;
-            font-weight: 800;
-            color: #0f172a;
-            margin-bottom: 6px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            font-size: 11.5px !important;
+            font-weight: 800 !important;
+            color: #0f172a !important;
+            margin-bottom: 4px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+        }
+        .readiness-summary {
+            font-size: 10.5px !important;
+            font-weight: 700 !important;
+            color: #334155 !important;
+            background: #ffffff !important;
+            border: 1px dashed #cbd5e1 !important;
+            border-radius: 6px !important;
+            padding: 4px 7px !important;
+            margin-bottom: 5px !important;
+            line-height: 1.4 !important;
         }
         .check-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 8px;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 7px;
-            margin-bottom: 5px;
-            font-size: 12px;
-            font-weight: 700;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            gap: 4px !important;
+            padding: 3px 6px !important;
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 6px !important;
+            margin-bottom: 3px !important;
+            font-size: 10.5px !important;
+            font-weight: 700 !important;
+            line-height: 1.3 !important;
         }
-        .check-status-ok {
-            color: #1b5e20;
-            background: #e8f5e9;
-            padding: 3px 9px;
-            border-radius: 999px;
-            font-size: 11.5px;
-        }
-        .check-status-warn {
-            color: #b71c1c;
-            background: #ffebee;
-            padding: 3px 9px;
-            border-radius: 999px;
-            font-size: 11.5px;
-        }
+        .check-status-ok,
+        .check-status-warn,
         .check-status-wait {
-            color: #006064;
-            background: #e0f7fa;
-            padding: 3px 9px;
-            border-radius: 999px;
-            font-size: 11.5px;
+            padding: 1.5px 6px !important;
+            border-radius: 999px !important;
+            font-size: 10px !important;
+            line-height: 1.3 !important;
         }
         .check-edit-btn {
             background: #0284c7 !important;
@@ -290,6 +333,123 @@
             margin-top: 6px;
             min-height: 18px;
         }
+        .save-feedback-box {
+            margin-top: 12px;
+            padding: 10px 12px;
+            border-radius: 9px;
+            font-size: 12.5px;
+            font-weight: 700;
+            display: none;
+        }
+        .save-feedback-box.ok {
+            display: block;
+            background: #e8f5e9;
+            border: 1px solid #81c784;
+            color: #1b5e20;
+        }
+        .save-feedback-box.err {
+            display: block;
+            background: #ffebee;
+            border: 1px solid #ef9a9a;
+            color: #b71c1c;
+        }
+    
+        .geo-coords-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .geo-coords-grid .form-group {
+            margin-bottom: 6px;
+        }
+        .geo-coords-grid label {
+            font-size: 11px !important;
+            margin-bottom: 3px !important;
+            font-weight: 700;
+        }
+        .geo-coords-grid input[type="text"] {
+            height: 30px !important;
+            padding: 4px 8px !important;
+            font-size: 11px !important;
+            border-radius: 6px !important;
+        }
+    
+        .oath-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.72);
+            backdrop-filter: blur(3px);
+            z-index: 99999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 14px;
+        }
+        .oath-modal-backdrop.show {
+            display: flex;
+        }
+        .oath-modal-card {
+            background: #ffffff;
+            color: #0f172a;
+            border-radius: 14px;
+            max-width: 440px;
+            width: 100%;
+            padding: 18px 16px;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+            border: 1px solid #cbd5e1;
+            text-align: right;
+            line-height: 1.75;
+        }
+        .oath-modal-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #006064;
+            margin: 0 0 10px 0;
+            text-align: center;
+        }
+        .oath-modal-text {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e293b;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 14px;
+        }
+        .oath-modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .oath-btn-agree {
+            background: linear-gradient(135deg, #059669, #047857) !important;
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 9px !important;
+            padding: 10px 12px !important;
+            font-size: 12.5px !important;
+            font-weight: 800 !important;
+            cursor: pointer !important;
+            width: 100% !important;
+            max-width: none !important;
+        }
+        .oath-btn-disagree {
+            background: #fee2e2 !important;
+            color: #991b1b !important;
+            border: 1px solid #fca5a5 !important;
+            border-radius: 9px !important;
+            padding: 9px 12px !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            cursor: pointer !important;
+            width: 100% !important;
+            max-width: none !important;
+        }
+    
+        .incoming-asks-fab{position:fixed;top:14px;left:14px;z-index:1200;background:linear-gradient(135deg,#0284c7,#0369a1)!important;color:#fff!important;border:1px solid rgba(255,255,255,.25)!important;border-radius:999px!important;padding:7px 12px!important;font-size:12px!important;font-weight:800!important;display:inline-flex!important;align-items:center!important;gap:6px!important;width:auto!important;max-width:none!important;box-shadow:0 6px 16px rgba(2,132,199,.35)!important;cursor:pointer!important}
+        .incoming-asks-badge{background:#ef4444;color:#fff;border-radius:999px;padding:1px 6px;font-size:11px;font-weight:800;line-height:1.3;min-width:16px;text-align:center}
     </style>
 </head>
 <body>
@@ -299,7 +459,7 @@
     </div>
 
     <button id="sidebarToggle" class="sidebar-toggle-button" onclick="toggleSidebar()">☰   </button>
-    <button id="infoSidebarToggle" class="sidebar-toggle-button" onclick="toggleInfoSidebar()">💡</button>
+    <a id="infoSidebarToggle" href="pharmacist-replies.html" class="incoming-asks-fab" onclick="openIncomingAsksAndResetCounter(event)"><span>📩 الأسئلة الواردة</span><span id="incomingAsksCountBadge" class="incoming-asks-badge">0</span></a>
 
     <div id="sidebar">
         <div class="sidebar-header">
@@ -341,19 +501,23 @@
     </div>
 
     <div class="form-container">
-        <h4 style="text-align: center;">إضافة صيدلية جديدة للمنصة </h4>
-        <p style="text-align: center; color: var(--secondary-color); font-weight: 700;">املأ البيانات وحدد الموقع بدقة!</p>
+        <h4 style="text-align: center;">   </h4>
+        <p style="text-align: center; color: var(--secondary-color); font-weight: 700;">تحقق من اكتمال البيانات    </p>
 
         <div class="readiness-panel" id="pharmacyReadinessPanel">
             <div class="readiness-title">
-                <span>فحص الجاهزية</span>
-                <span id="overallReadinessBadge" class="check-status-wait">⏳</span>
+                <span>حالة الفحص</span>
+                <span id="overallReadinessBadge" class="check-status-wait">⏳ جاري الفحص</span>
+            </div>
+
+            <div id="readinessSummaryText" class="readiness-summary">
+                ⏳ جاري الفحص الآن: نتحقق من بيانات الصيدلية، والموقع الجغرافي المحفوظ، وحالة اتصال الواتساب...
             </div>
 
             <div class="check-row">
                 <span>بيانات الصيدلية</span>
                 <div style="display:flex;align-items:center;gap:6px;">
-                    <span id="checkDataBadge" class="check-status-wait">⏳</span>
+                    <span id="checkDataBadge" class="check-status-wait">⏳ جاري الفحص</span>
                     <button type="button" id="editDataBtn" class="check-edit-btn" style="display:none;" onclick="goToWizardStep(1)">تعديل</button>
                 </div>
             </div>
@@ -361,7 +525,7 @@
             <div class="check-row">
                 <span>بيانات الموقع الجغرافي</span>
                 <div style="display:flex;align-items:center;gap:6px;">
-                    <span id="checkGeoBadge" class="check-status-wait">⏳</span>
+                    <span id="checkGeoBadge" class="check-status-wait">⏳ جاري الفحص</span>
                     <button type="button" id="editGeoBtn" class="check-edit-btn" style="display:none;" onclick="goToWizardStep(2)">تعديل</button>
                 </div>
             </div>
@@ -369,16 +533,16 @@
             <div class="check-row" style="margin-bottom:0;">
                 <span>بيانات ربط بوت واتساب</span>
                 <div style="display:flex;align-items:center;gap:6px;">
-                    <span id="checkWaBadge" class="check-status-wait">⏳</span>
+                    <span id="checkWaBadge" class="check-status-wait">⏳ جاري الفحص</span>
                     <button type="button" id="editWaBtn" class="check-edit-btn" style="display:none;" onclick="goToWizardStep(3)">تعديل</button>
                 </div>
             </div>
         </div>
 
-        <div class="step-indicator">
-            <div id="stepBadge1" class="step-badge active">1. بيانات الصيدلية</div>
-            <div id="stepBadge2" class="step-badge">2. الموقع الجغرافي</div>
-            <div id="stepBadge3" class="step-badge">3. الواتساب والحفظ</div>
+        <div class="step-indicator" role="tablist">
+            <button type="button" id="stepBadge1" class="step-badge active" onclick="goToWizardStep(1)">1. بيانات الصيدلية</button>
+            <button type="button" id="stepBadge2" class="step-badge" onclick="goToWizardStep(2)">2. الموقع الجغرافي</button>
+            <button type="button" id="stepBadge3" class="step-badge" onclick="goToWizardStep(3)">3. الواتساب والحفظ</button>
         </div>
 
         <!-- الخطوة 1: الاسم ورقم الواتساب -->
@@ -405,6 +569,7 @@
             </div>
 
             <div class="wizard-nav">
+                <button type="button" class="btn-save-edit" onclick="savePharmacyEdits()">💾 حفظ التعديل</button>
                 <button type="button" class="btn-next" onclick="goToWizardStep(2)">التالي ⬅️</button>
             </div>
         </div>
@@ -423,23 +588,26 @@
                 <div id="gpsMessageBox" class="hidden"></div>
             </div>
 
-            <div class="form-group">
-                <label for="lat">خط العرض (Latitude)</label>
-                <input type="text" id="lat" placeholder="سيظهر بعد تحديد الموقع بالـ GPS أو إسقاط الدبوس" disabled oninput="runReadinessDiagnostics()">
-                <div id="errGeoLocation" class="field-inline-error"></div>
-            </div>
-            <div class="form-group">
-                <label for="lng">خط الطول (Longitude)</label>
-                <input type="text" id="lng" placeholder="سيظهر بعد تحديد الموقع بالـ GPS أو إسقاط الدبوس" disabled oninput="runReadinessDiagnostics()">
+            <div class="geo-coords-grid">
+                <div class="form-group">
+                    <label for="lat">خط العرض (Latitude)</label>
+                    <input type="text" id="lat" placeholder="Latitude" disabled oninput="runReadinessDiagnostics()">
+                    <div id="errGeoLocation" class="field-inline-error"></div>
+                </div>
+                <div class="form-group">
+                    <label for="lng">خط الطول (Longitude)</label>
+                    <input type="text" id="lng" placeholder="Longitude" disabled oninput="runReadinessDiagnostics()">
+                </div>
             </div>
 
             <div class="wizard-nav">
                 <button type="button" class="btn-prev" onclick="goToWizardStep(1)">➡️ السابق</button>
+                <button type="button" class="btn-save-edit" onclick="savePharmacyEdits()">💾 حفظ التعديل</button>
                 <button type="button" class="btn-next" onclick="goToWizardStep(3)">التالي ⬅️</button>
             </div>
         </div>
 
-        <!-- الخطوة 3: التفاصيل، ربط الواتساب (أسلوب connect.html)، والحفظ -->
+        <!-- الخطوة 3: التفاصيل، ربط الواتساب، والحفظ -->
         <div id="wizardStep3" class="wizard-step">
             <div class="form-group">
                 <label for="pharmacyDetails">تفاصيل أخرى (اختياري)</label>
@@ -450,11 +618,19 @@
                 <h5 style="margin-top: 0; color: #006064; font-weight: 800;">📱 ربط الواتساب بالسيرفر (QR / كود الربط)</h5>
                 <div id="addphBackendLabel" style="font-size: 11.5px; color: #0f766e; font-weight: 700; word-break: break-all;"></div>
 
-                <div id="waConnectionAlert" class="wa-conn-banner disconnected">
-                    ⏳ جاري التحقق من حالة اتصال رقم الواتساب...
+                <div id="waConnectionAlert" class="wa-conn-banner waiting">
+                    ⏳ جاري الفحص لحالة اتصال رقم الواتساب...
                 </div>
 
-                <div class="wa-connect-panel">
+                <!-- يظهر فقط عند نجاح الربط: عنوان "تم ربط بنجاح" وتحته سؤال استكشاف الأعطال -->
+                <div id="waConnectedOnlyView" class="wa-success-box" style="display: none;">
+                    <div class="wa-success-title">تم ربط بنجاح</div>
+                    <button type="button" class="wa-trouble-link-btn" onclick="addphConfirmWipeAndReconnect()">
+                        هل لا تصلك استفسارات العملاء علي واتساب الصيدليه؟!
+                    </button>
+                </div>
+
+                <div id="waPairingControlsWrap" class="wa-connect-panel">
                     <div class="wa-connect-btns">
                         <button type="button" class="wa-btn-qr" onclick="addphAddAndQr()">إضافة الجلسة وتوليد QR</button>
                         <button type="button" class="wa-btn-pair" onclick="addphRequestPairCode()">طلب كود الربط بالرقم</button>
@@ -487,10 +663,14 @@
                 </div>
             </div>
 
+            <div id="saveEditFeedback" class="save-feedback-box"></div>
             <div id="errorBox" class="hidden"></div>
-            <div id="successMessage" class="hidden" style="background:#e6ffe6; color:#00a854; padding:15px; border-radius:10px; margin-top:15px; font-weight: bold; text-align: center;">✅ تم إضافة الصيدلية بنجاح! شكراً لك.</div>
+            <div id="successMessage" class="hidden" style="background:#e6ffe6; color:#00a854; padding:15px; border-radius:10px; margin-top:15px; font-weight: bold; text-align: center;">✅ تم حفظ بيانات الصيدلية بنجاح! شكراً لك.</div>
 
-            <button id="submitPharmacyBtn" onclick="submitPharmacy()" style="margin-top: 15px;">إضافة الصيدلية</button>
+            <div style="display:flex; gap:10px; margin-top: 15px;">
+                <button type="button" id="saveEditBtn" class="btn-save-edit" onclick="savePharmacyEdits()" style="flex:1;">💾 حفظ التعديل</button>
+                <button type="button" id="submitPharmacyBtn" onclick="submitPharmacy()" style="flex:1;">إضافة الصيدلية</button>
+            </div>
 
             <div class="wizard-nav">
                 <button type="button" class="btn-prev" onclick="goToWizardStep(2)">➡️ السابق</button>
@@ -501,45 +681,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>
-
-    <script>
-      (function enforceAdminOnlyPharmaciesVisibility() {
-        const ADMIN_NUMBER = "249128514785";
-        const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
-        const tail9 = (v) => {
-          const d = digitsOnly(v);
-          return d.length > 9 ? d.slice(-9) : d;
-        };
-
-        function isCurrentUserAdmin() {
-          const cur = digitsOnly(localStorage.getItem("userPhone"));
-          if (!cur) return false;
-          return cur === ADMIN_NUMBER || (tail9(cur).length === 9 && tail9(cur) === tail9(ADMIN_NUMBER));
-        }
-
-        function applyVisibility() {
-          const allowed = isCurrentUserAdmin();
-          if (allowed) {
-            localStorage.setItem("isAdmin", "true");
-            localStorage.setItem("userRole", "admin");
-          } else {
-            localStorage.removeItem("isAdmin");
-            if (localStorage.getItem("userRole") === "admin") {
-              localStorage.removeItem("userRole");
-            }
-          }
-
-          const links = document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink');
-          links.forEach((el) => {
-            el.style.setProperty("display", allowed ? "block" : "none", "important");
-          });
-        }
-
-        applyVisibility();
-        document.addEventListener("DOMContentLoaded", applyVisibility);
-        setTimeout(applyVisibility, 300);
-      })();
-    </script>
 
     <script>
       (function forceHideAddphLoadingScreen() {
@@ -576,6 +717,7 @@
           : REMOTE_BACKEND;
 
         window.isWaCurrentlyConnected = window.isWaCurrentlyConnected || false;
+        let isCheckingReadiness = true;
 
         function onlyDigits(v) {
           return String(v || "").replace(/\D/g, "");
@@ -592,6 +734,37 @@
           return lat >= 3.5 && lat <= 23.0 && lng >= 21.5 && lng <= 39.0;
         }
 
+        function setCheckingUiState() {
+          isCheckingReadiness = true;
+          const overall = document.getElementById("overallReadinessBadge");
+          const summary = document.getElementById("readinessSummaryText");
+          const dBadge = document.getElementById("checkDataBadge");
+          const gBadge = document.getElementById("checkGeoBadge");
+          const wBadge = document.getElementById("checkWaBadge");
+
+          if (overall) {
+            overall.className = "check-status-wait";
+            overall.textContent = "⏳ جاري الفحص";
+          }
+          if (summary) {
+            summary.textContent = "⏳ جاري الفحص الآن: نتحقق من بيانات الصيدلية، والموقع الجغرافي المحفوظ، وحالة اتصال الواتساب...";
+          }
+          [dBadge, gBadge, wBadge].forEach((b) => {
+            if (b) {
+              b.className = "check-status-wait";
+              b.textContent = "⏳ جاري الفحص";
+            }
+          });
+        }
+
+        function showSaveFeedback(msg, isOk) {
+          const box = document.getElementById("saveEditFeedback");
+          if (!box) return;
+          box.className = "save-feedback-box " + (isOk ? "ok" : "err");
+          box.textContent = msg;
+          box.style.display = "block";
+        }
+
         function addWaLog(msg) {
           const box = document.getElementById("addphWaLogBox");
           if (!box) return;
@@ -604,6 +777,46 @@
           if (!banner) return;
           banner.className = "wa-conn-banner " + (mode || "disconnected");
           banner.textContent = text;
+        }
+
+        function toggleConnectedMinimalUI(isConnected) {
+          const banner = document.getElementById("waConnectionAlert");
+          const onlyView = document.getElementById("waConnectedOnlyView");
+          const panel = document.getElementById("waPairingControlsWrap");
+
+          if (isConnected) {
+            if (banner) banner.style.display = "none";
+            if (onlyView) onlyView.style.display = "block";
+            if (panel) panel.style.display = "none";
+          } else {
+            if (banner) banner.style.display = "block";
+            if (onlyView) onlyView.style.display = "none";
+            if (panel) panel.style.display = "block";
+          }
+        }
+
+        function resetQrAndCodeDisplay(hintText) {
+          const img = document.getElementById("addphWaQrImg");
+          const canvas = document.getElementById("addphWaQrCanvas");
+          const hint = document.getElementById("addphWaQrHint");
+          const codeEl = document.getElementById("addphWaPairCode");
+
+          if (img) {
+            img.removeAttribute("src");
+            img.style.display = "none";
+          }
+          if (canvas) {
+            const ctx = canvas.getContext("2d");
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.style.display = "none";
+          }
+          if (hint) {
+            hint.style.display = "block";
+            hint.textContent = hintText || "جاري تجهيز رمز QR...";
+          }
+          if (codeEl) {
+            codeEl.textContent = "--------";
+          }
         }
 
         async function renderAddphQr(qrVal) {
@@ -643,33 +856,47 @@
 
         function applyWaPayload(obj) {
           if (!obj || typeof obj !== "object") return;
-          const st = String(obj.status || obj.state || "").toLowerCase();
-          const connected = Boolean(obj.connected === true || st === "connected" || st === "open" || obj.ready === true);
+          const rawStatus = String(obj.status || obj.state || "").trim();
+          const st = rawStatus.toLowerCase();
+          const hasSavedCreds = Boolean(obj.hasCreds === true || st === "saved" || st === "closed");
+          const connected = Boolean(
+            obj.connected === true ||
+            st === "connected" ||
+            st === "open" ||
+            obj.ready === true ||
+            hasSavedCreds
+          );
           window.isWaCurrentlyConnected = connected;
 
-          if (connected) {
-            setWaBanner("✅ رقم الواتساب متصل وجاهز لاستقبال والرد على الاستعلامات.", "connected");
-            const img = document.getElementById("addphWaQrImg");
-            const canvas = document.getElementById("addphWaQrCanvas");
-            const hint = document.getElementById("addphWaQrHint");
-            if (img) img.style.display = "none";
-            if (canvas) canvas.style.display = "none";
-            if (hint) {
-              hint.style.display = "block";
-              hint.textContent = "الجلسة متصلة وجاهزة.";
-            }
-          } else if (st) {
-            setWaBanner("⚠️ حالة الجلسة: " + (obj.status || obj.state), "waiting");
+          if (st === "closed" && obj.sessionId) {
+            fetch(BACKEND_URL + "/api/session/start", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sessionId: obj.sessionId })
+            }).catch(() => {});
           }
 
-          if (obj.qr) renderAddphQr(obj.qr);
-          if (obj.pairingCode || obj.code) showAddphCode(obj.pairingCode || obj.code);
-          window.runReadinessDiagnostics();
+          if (st === "connected" || st === "open" || obj.connected === true) {
+            toggleConnectedMinimalUI(true);
+          } else if (hasSavedCreds) {
+            toggleConnectedMinimalUI(false);
+            setWaBanner("🔄 الجلسة محفوظة ومربوطة وجاري تنشيط الاتصال...", "waiting");
+          } else {
+            toggleConnectedMinimalUI(false);
+            if (rawStatus) {
+              setWaBanner("⚠️ حالة الجلسة: " + rawStatus, "waiting");
+            }
+          }
+
+          if (st !== "connected" && obj.qr) renderAddphQr(obj.qr);
+          if (st !== "connected" && (obj.pairingCode || obj.code)) showAddphCode(obj.pairingCode || obj.code);
+          window.runReadinessDiagnostics(false);
         }
 
         window.addphAddAndQr = async function() {
           const phone = onlyDigits(document.getElementById("pharmacyPhone")?.value || "");
           if (!phone) return addWaLog("⚠️ أدخل رقم الواتساب أولاً.");
+          toggleConnectedMinimalUI(false);
           setWaBanner("⏳ جاري إضافة الجلسة وتوليد QR...", "waiting");
           addWaLog(`إرسال طلب إضافة الجلسة للرقم ${phone}...`);
           try {
@@ -692,6 +919,7 @@
         window.addphRequestPairCode = async function() {
           const phone = onlyDigits(document.getElementById("pharmacyPhone")?.value || "");
           if (!phone) return addWaLog("⚠️ أدخل رقم الواتساب أولاً.");
+          toggleConnectedMinimalUI(false);
           setWaBanner("⏳ جاري طلب كود الربط بالرقم...", "waiting");
           addWaLog(`طلب Pairing Code للرقم ${phone}...`);
           try {
@@ -712,34 +940,113 @@
         };
 
         window.addphRefreshSessions = async function() {
-          const phone = onlyDigits(document.getElementById("pharmacyPhone")?.value || "");
+          const phone = onlyDigits(document.getElementById("pharmacyPhone")?.value || localStorage.getItem("userPhone") || "");
           if (!isSudan12(phone)) {
             window.isWaCurrentlyConnected = false;
+            toggleConnectedMinimalUI(false);
             setWaBanner("⚠️ أدخل رقم واتساب سوداني صحيح (249XXXXXXXXX).", "disconnected");
-            window.runReadinessDiagnostics();
+            window.runReadinessDiagnostics(false);
             return;
           }
           try {
-            const res = await fetch(BACKEND_URL + "/api/sessions");
+            const res = await fetch(BACKEND_URL + "/api/sessions?session=" + encodeURIComponent(phone));
             const data = await res.json();
             const list = Array.isArray(data) ? data : (data.sessions || []);
-            const found = list.find((s) =>
-              String(s.phone || s.number || s.sessionId || s.id || "").includes(phone)
-            );
+            const tail = phone.slice(-9);
+            const found = list.find((s) => {
+              const vals = [s.id, s.sessionId, s.phone, s.number, s.ownPhone]
+                .map((x) => onlyDigits(x))
+                .filter(Boolean);
+              return vals.some((v) => v === phone || (tail.length === 9 && v.endsWith(tail)));
+            });
+
             if (found) {
               applyWaPayload(found);
-              addWaLog(`تم تحديث حالة الجلسة (${phone}): ${found.status || "محدث"}`);
+              addWaLog("تم تحديث حالة الجلسة (" + phone + "): " + (found.status || "محدث"));
+            } else if (data && (data.connected === true || String(data.status || "").toLowerCase() === "connected")) {
+              applyWaPayload({
+                sessionId: data.sessionId || phone,
+                connected: true,
+                status: "connected",
+                hasCreds: true
+              });
+              addWaLog("تم تأكيد اتصال الجلسة (" + phone + ")");
             } else {
               window.isWaCurrentlyConnected = false;
+              toggleConnectedMinimalUI(false);
               setWaBanner("⚠️ رقم الواتساب غير متصل حالياً — اربطه بـ QR أو كود الربط.", "disconnected");
-              addWaLog(`لا توجد جلسة نشطة للرقم ${phone} حالياً.`);
-              window.runReadinessDiagnostics();
+              addWaLog("لا توجد جلسة نشطة للرقم " + phone + " حالياً.");
+              window.runReadinessDiagnostics(false);
             }
           } catch (e) {
             window.isWaCurrentlyConnected = false;
+            toggleConnectedMinimalUI(false);
             setWaBanner("⚠️ تعذر التحقق من اتصال الواتساب حالياً.", "disconnected");
             addWaLog("❌ فشل جلب /api/sessions: " + e.message);
-            window.runReadinessDiagnostics();
+            window.runReadinessDiagnostics(false);
+          }
+        };
+
+        window.addphConfirmWipeAndReconnect = async function() {
+          const confirmed = window.confirm("هل متاكد تريد مسح و اعادة الجلسه ؟!");
+          if (!confirmed) return;
+
+          const rawPhone = onlyDigits(document.getElementById("pharmacyPhone")?.value || localStorage.getItem("userPhone") || "");
+          const sessionId = rawPhone;
+
+          window.isWaCurrentlyConnected = false;
+          toggleConnectedMinimalUI(false);
+          resetQrAndCodeDisplay("⏳ جاري مسح الجلسة القديمة وتجهيز باركود جديد...");
+          setWaBanner("⏳ جاري مسح الجلسة من السيرفر وقاعدة البيانات...", "waiting");
+          addWaLog(`بدء مسح الجلسة بالكامل للرقم ${sessionId || "غير محدد"}...`);
+          window.runReadinessDiagnostics(false);
+
+          try {
+            if (sessionId) {
+              await fetch(BACKEND_URL + "/api/session/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  sessionId,
+                  phone: rawPhone,
+                  pharmacyId: rawPhone
+                })
+              }).catch(() => {});
+            }
+
+            if (typeof db !== "undefined" && db && sessionId) {
+              const candidates = Array.from(new Set([sessionId, rawPhone].filter(Boolean)));
+              for (const cid of candidates) {
+                try {
+                  const docRef = db.collection("whatsappSessions").doc(cid);
+                  const keysSnap = await docRef.collection("keys").get().catch(() => null);
+                  if (keysSnap && !keysSnap.empty) {
+                    const batch = db.batch();
+                    keysSnap.docs.forEach((k) => batch.delete(k.ref));
+                    await batch.commit().catch(() => {});
+                  }
+                  await docRef.delete().catch(() => {});
+                } catch (_) {}
+
+                try {
+                  await db.collection("pharmacies").doc(cid).set(
+                    { sessionId: "", sessionLinkedAt: "" },
+                    { merge: true }
+                  ).catch(() => {});
+                } catch (_) {}
+              }
+            }
+
+            addWaLog("✅ تم مسح الجلسة القديمة. جاري بدء جلسة جديدة وتوليد QR...");
+
+            if (sessionId) {
+              await window.addphAddAndQr();
+            } else {
+              setWaBanner("⚠️ أدخل رقم الواتساب ثم اضغط إضافة الجلسة وتوليد QR.", "disconnected");
+            }
+          } catch (err) {
+            setWaBanner("❌ حدث خطأ أثناء مسح الجلسة: " + err.message, "disconnected");
+            addWaLog("❌ خطأ أثناء المسح وإعادة التشغيل: " + err.message);
           }
         };
 
@@ -756,7 +1063,27 @@
           }
         };
 
-        window.runReadinessDiagnostics = function() {
+        function applyCoordinatesToMapAndInputs(latNum, lngNum) {
+          const lat = parseFloat(latNum);
+          const lng = parseFloat(lngNum);
+          if (isNaN(lat) || isNaN(lng)) return;
+
+          const latInput = document.getElementById("lat");
+          const lngInput = document.getElementById("lng");
+          if (latInput) latInput.value = lat.toFixed(6);
+          if (lngInput) lngInput.value = lng.toFixed(6);
+
+          if (window._addphMap && window._addphMarker) {
+            window._addphMap.setView([lat, lng], 15);
+            window._addphMarker.setLatLng([lat, lng]);
+          }
+        }
+
+        window.runReadinessDiagnostics = function(forceChecking = false) {
+          if (forceChecking) {
+            setCheckingUiState();
+          }
+
           const phName = String(document.getElementById("pharmacyName")?.value || "").trim();
           const ownerName = String(document.getElementById("pharmacyOwnerField")?.value || localStorage.getItem("pharmacyOwner") || "").trim();
           const phPhone = onlyDigits(document.getElementById("pharmacyPhone")?.value || "");
@@ -767,11 +1094,15 @@
           const geoOk = inSudan(latVal, lngVal);
           const waOk = Boolean(window.isWaCurrentlyConnected);
 
+          if (isCheckingReadiness && !forceChecking) {
+            return;
+          }
+
           const dataBadge = document.getElementById("checkDataBadge");
           const editDataBtn = document.getElementById("editDataBtn");
           if (dataBadge) {
             dataBadge.className = dataOk ? "check-status-ok" : "check-status-warn";
-            dataBadge.textContent = dataOk ? "✓ مكتمل صاح" : "⚠️ ناقص";
+            dataBadge.textContent = dataOk ? "✓ مكتمل" : "⚠️ غير مكتمل";
           }
           if (editDataBtn) editDataBtn.style.display = dataOk ? "none" : "inline-block";
 
@@ -779,7 +1110,7 @@
           const editGeoBtn = document.getElementById("editGeoBtn");
           if (geoBadge) {
             geoBadge.className = geoOk ? "check-status-ok" : "check-status-warn";
-            geoBadge.textContent = geoOk ? "✓ صاح" : "⚠️ غير محدد";
+            geoBadge.textContent = geoOk ? "✓ مكتمل" : "⚠️ غير مكتمل";
           }
           if (editGeoBtn) editGeoBtn.style.display = geoOk ? "none" : "inline-block";
 
@@ -787,78 +1118,183 @@
           const editWaBtn = document.getElementById("editWaBtn");
           if (waBadge) {
             waBadge.className = waOk ? "check-status-ok" : "check-status-warn";
-            waBadge.textContent = waOk ? "✓ صاح" : "⚠️ غير متصل";
+            waBadge.textContent = waOk ? "✓ مكتمل" : "⚠️ غير مكتمل";
           }
           if (editWaBtn) editWaBtn.style.display = waOk ? "none" : "inline-block";
 
+          const allOk = dataOk && geoOk && waOk;
           const overall = document.getElementById("overallReadinessBadge");
+          const summary = document.getElementById("readinessSummaryText");
+
           if (overall) {
-            const allOk = dataOk && geoOk && waOk;
             overall.className = allOk ? "check-status-ok" : "check-status-warn";
-            overall.textContent = allOk ? "✓ صاح" : "⚠️ ناقص";
+            overall.textContent = allOk ? "✓ مكتمل" : "⚠️ غير مكتمل";
+          }
+
+          if (summary) {
+            if (allOk) {
+              summary.textContent = "حالة الفحص مكتملة: بيانات الصيدلية والموقع الجغرافي وربط الواتساب جاهزة بالكامل ويمكنك حفظ التعديل.";
+            } else {
+              const missing = [];
+              if (!dataOk) missing.push("بيانات الصيدلية");
+              if (!geoOk) missing.push("الموقع الجغرافي");
+              if (!waOk) missing.push("ربط الواتساب");
+              summary.textContent = "حالة الفحص غير مكتملة: يرجى مراجعة واستكمال (" + missing.join("، ") + ") ثم الضغط على حفظ التعديل.";
+            }
           }
         };
 
-        async function loadPharmacyDataFromFirestore(phoneDigits) {
+        async function loadPharmacyAndMapFromFirestore(phoneDigits) {
           const noticeEl = document.getElementById("existingPharmacyNotice");
-          if (!isSudan12(phoneDigits) || typeof db === "undefined" || !db) {
-            window.runReadinessDiagnostics();
+          if (!isSudan12(phoneDigits)) {
+            isCheckingReadiness = false;
+            window.runReadinessDiagnostics(false);
             return;
           }
 
           try {
             let docData = null;
-            const directSnap = await db.collection("pharmacies").doc(phoneDigits).get();
-            if (directSnap.exists) {
-              docData = directSnap.data() || {};
-            } else {
-              const qSnap = await db.collection("pharmacies").where("phone", "==", phoneDigits).limit(1).get();
-              if (!qSnap.empty) {
-                docData = qSnap.docs[0].data() || {};
+            if (typeof db !== "undefined" && db) {
+              const directSnap = await db.collection("pharmacies").doc(phoneDigits).get();
+              if (directSnap.exists) {
+                docData = directSnap.data() || {};
+              } else {
+                const qSnap = await db.collection("pharmacies").where("phone", "==", phoneDigits).limit(1).get();
+                if (!qSnap.empty) {
+                  docData = qSnap.docs[0].data() || {};
+                }
               }
             }
 
+            const cachedLat = parseFloat(localStorage.getItem("pharmacyLat") || localStorage.getItem("userLat") || "");
+            const cachedLng = parseFloat(localStorage.getItem("pharmacyLng") || localStorage.getItem("userLng") || "");
+
+            const fetchedPhName = docData ? String(docData.name || docData.pharmacyName || "").trim() : "";
             if (docData) {
               const nameEl = document.getElementById("pharmacyName");
               const ownerEl = document.getElementById("pharmacyOwnerField");
               const detailsEl = document.getElementById("pharmacyDetails");
-              const latEl = document.getElementById("lat");
-              const lngEl = document.getElementById("lng");
 
-              if (nameEl && docData.name && !nameEl.value.trim()) nameEl.value = docData.name;
+              const phTitle = docData.name || docData.pharmacyName || "";
+              if (nameEl && phTitle) {
+                nameEl.value = phTitle;
+                localStorage.setItem("pharmacyName", phTitle);
+              }
+
               const ownerVal = docData.ownerName || docData.pharmacistName || docData.owner || "";
-              if (ownerEl && ownerVal && !ownerEl.value.trim()) {
+              if (ownerEl && ownerVal) {
                 ownerEl.value = ownerVal;
                 localStorage.setItem("pharmacyOwner", ownerVal);
               }
-              if (detailsEl && (docData.details || docData.address) && !detailsEl.value.trim()) {
-                detailsEl.value = docData.details || docData.address;
+
+              const detailsVal = docData.details || docData.address || "";
+              if (detailsEl && detailsVal) {
+                detailsEl.value = detailsVal;
               }
-              if (latEl && docData.lat !== undefined && docData.lat !== null && !latEl.value.trim()) {
-                latEl.value = String(docData.lat);
-              }
-              if (lngEl && docData.lng !== undefined && docData.lng !== null && !lngEl.value.trim()) {
-                lngEl.value = String(docData.lng);
+
+              const docLat = parseFloat(docData.lat);
+              const docLng = parseFloat(docData.lng);
+              if (!isNaN(docLat) && !isNaN(docLng)) {
+                applyCoordinatesToMapAndInputs(docLat, docLng);
+                localStorage.setItem("pharmacyLat", String(docLat));
+                localStorage.setItem("pharmacyLng", String(docLng));
+              } else if (!isNaN(cachedLat) && !isNaN(cachedLng)) {
+                applyCoordinatesToMapAndInputs(cachedLat, cachedLng);
               }
 
               if (noticeEl) {
                 noticeEl.style.display = "block";
-                noticeEl.textContent = "ℹ️ تم جلب بيانات الصيدلية المسجلة مسبقاً لهذا الرقم — يمكنك تعديلها وحفظها.";
+                noticeEl.textContent = "ℹ️ تم جلب بيانات الصيدلية والموقع المحفوظ مؤخراً للرقم " + phoneDigits + " — عدّل ما تشاء ثم اضغط حفظ التعديل.";
               }
+            } else if (!isNaN(cachedLat) && !isNaN(cachedLng)) {
+              applyCoordinatesToMapAndInputs(cachedLat, cachedLng);
             }
           } catch (e) {
             console.warn("Firestore pharmacy load warning:", e);
           }
 
-          window.runReadinessDiagnostics();
           await window.addphRefreshSessions();
+          isCheckingReadiness = false;
+          window.runReadinessDiagnostics(false);
+          if (typeof window.checkPharmacyNameAndShowOathIfMissing === "function") {
+            window.checkPharmacyNameAndShowOathIfMissing(Boolean(typeof fetchedPhName !== "undefined" && fetchedPhName));
+          }
         }
+
+        window.savePharmacyEdits = async function() {
+          const phName = String(document.getElementById("pharmacyName")?.value || "").trim();
+          const ownerName = String(document.getElementById("pharmacyOwnerField")?.value || "").trim();
+          const phPhone = onlyDigits(document.getElementById("pharmacyPhone")?.value || "");
+          const detailsVal = String(document.getElementById("pharmacyDetails")?.value || "").trim();
+          const latNum = parseFloat(document.getElementById("lat")?.value);
+          const lngNum = parseFloat(document.getElementById("lng")?.value);
+
+          if (!phName) {
+            showSaveFeedback("⚠️ يرجى إدخال اسم الصيدلية قبل حفظ التعديل.", false);
+            return;
+          }
+          if (!ownerName) {
+            showSaveFeedback("⚠️ يرجى إدخال اسم صاحب الصيدلية قبل حفظ التعديل.", false);
+            return;
+          }
+          if (!isSudan12(phPhone)) {
+            showSaveFeedback("⚠️ يرجى إدخال رقم واتساب صحيح يبدأ بـ 249 ومكوّن من 12 رقماً.", false);
+            return;
+          }
+
+          const payload = {
+            id: phPhone,
+            pharmacyId: phPhone,
+            sessionId: phPhone,
+            name: phName,
+            pharmacyName: phName,
+            ownerName,
+            pharmacistName: ownerName,
+            phone: phPhone,
+            details: detailsVal,
+            address: detailsVal,
+            ...(!isNaN(latNum) && !isNaN(lngNum) ? { lat: latNum, lng: lngNum } : {}),
+            updatedAt: new Date().toISOString(),
+          };
+
+          localStorage.setItem("pharmacyName", phName);
+          localStorage.setItem("pharmacyOwner", ownerName);
+          localStorage.setItem("accountType", "pharmacist");
+          if (!isNaN(latNum) && !isNaN(lngNum)) {
+            localStorage.setItem("pharmacyLat", String(latNum));
+            localStorage.setItem("pharmacyLng", String(lngNum));
+          }
+
+          try {
+            if (typeof db !== "undefined" && db) {
+              await db.collection("pharmacies").doc(phPhone).set(payload, { merge: true });
+            }
+            // تم الحفظ المباشر في Firestore بنجاح
+            isCheckingReadiness = false;
+            window.runReadinessDiagnostics(false);
+            showSaveFeedback("✅ تم حفظ التعديل بنجاح في قاعدة البيانات.", true);
+          } catch (err) {
+            showSaveFeedback("❌ تعذر حفظ التعديل: " + err.message, false);
+          }
+        };
 
         function initMapIfNeeded() {
           const mapEl = document.getElementById("map");
-          if (!mapEl || typeof L === "undefined" || window._addphMap) return;
-          const latVal = parseFloat(document.getElementById("lat")?.value) || 15.5007;
-          const lngVal = parseFloat(document.getElementById("lng")?.value) || 32.5599;
+          if (!mapEl || typeof L === "undefined") return;
+          const latVal = parseFloat(document.getElementById("lat")?.value || localStorage.getItem("pharmacyLat")) || 15.5007;
+          const lngVal = parseFloat(document.getElementById("lng")?.value || localStorage.getItem("pharmacyLng")) || 32.5599;
+          if (mapEl._leaflet_id || window._addphMap) {
+            if (!window._addphMap && window.map && typeof window.map.setView === "function") {
+              window._addphMap = window.map;
+            }
+            if (window._addphMap && typeof window._addphMap.setView === "function") {
+              window._addphMap.setView([latVal, lngVal], 14);
+              if (window._addphMarker && typeof window._addphMarker.setLatLng === "function") {
+                window._addphMarker.setLatLng([latVal, lngVal]);
+              }
+            }
+            return;
+          }
           const map = L.map("map").setView([latVal, lngVal], 13);
           L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             attribution: "&copy; OpenStreetMap"
@@ -866,11 +1302,16 @@
           const marker = L.marker([latVal, lngVal], { draggable: true }).addTo(map);
 
           const syncLatLng = (latlng) => {
+            const latFixed = Number(latlng.lat).toFixed(6);
+            const lngFixed = Number(latlng.lng).toFixed(6);
             const latInput = document.getElementById("lat");
             const lngInput = document.getElementById("lng");
-            if (latInput) latInput.value = Number(latlng.lat).toFixed(6);
-            if (lngInput) lngInput.value = Number(latlng.lng).toFixed(6);
-            window.runReadinessDiagnostics();
+            if (latInput) latInput.value = latFixed;
+            if (lngInput) lngInput.value = lngFixed;
+            localStorage.setItem("pharmacyLat", latFixed);
+            localStorage.setItem("pharmacyLng", lngFixed);
+            isCheckingReadiness = false;
+            window.runReadinessDiagnostics(false);
           };
 
           marker.on("dragend", () => syncLatLng(marker.getLatLng()));
@@ -884,6 +1325,8 @@
         }
 
         document.addEventListener("DOMContentLoaded", async () => {
+          setCheckingUiState();
+
           const backendLabel = document.getElementById("addphBackendLabel");
           if (backendLabel) {
             backendLabel.textContent = "السيرفر: " + BACKEND_URL;
@@ -904,18 +1347,26 @@
           }
 
           initMapIfNeeded();
-          window.runReadinessDiagnostics();
 
           if (activePhone) {
-            await loadPharmacyDataFromFirestore(activePhone);
+            await loadPharmacyAndMapFromFirestore(activePhone);
+          } else {
+            isCheckingReadiness = false;
+            window.runReadinessDiagnostics(false);
+            if (typeof window.checkPharmacyNameAndShowOathIfMissing === "function") {
+              window.checkPharmacyNameAndShowOathIfMissing(false);
+            }
           }
 
           if (phoneInput) {
             phoneInput.addEventListener("change", async () => {
               const d = onlyDigits(phoneInput.value);
-              window.runReadinessDiagnostics();
               if (isSudan12(d)) {
-                await loadPharmacyDataFromFirestore(d);
+                setCheckingUiState();
+                await loadPharmacyAndMapFromFirestore(d);
+              } else {
+                isCheckingReadiness = false;
+                window.runReadinessDiagnostics(false);
               }
             });
           }
@@ -923,170 +1374,189 @@
       })();
     </script>
 
+    <div id="ethicsOathModal" class="oath-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="ethicsOathTitle">
+        <div class="oath-modal-card">
+            <h5 id="ethicsOathTitle" class="oath-modal-title">ميثاق الأمانة والأخلاق المهنية</h5>
+            <div class="oath-modal-text">
+                أقر وأشهد بالله العظيم أنني صيدلي مختص، وأتعهد بالالتزام بالأخلاق المهنية العالية، والصدق في بيان توفر الدواء أو عدم توفره، واحترام خصوصية السائلين وسرعة التجاوب دون أي استغلال أو تضليل.
+            </div>
+            <div class="oath-modal-actions">
+                <button type="button" class="oath-btn-agree" onclick="acceptEthicsOath()">موافق وأشهد على التزامي بالأخلاق المهنية</button>
+                <button type="button" class="oath-btn-disagree" onclick="rejectEthicsOath()">لا اوافق</button>
+            </div>
+        </div>
+    </div>
+
+
     <script>
-      (async function syncPharmacyLinksAcrossAllSidebars() {
-        const ADMIN_NUMBER = "249128514785";
-        const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
-        const tail9 = (v) => {
-          const d = digitsOnly(v);
-          return d.length > 9 ? d.slice(-9) : d;
+      (function initEthicsOathCheck() {
+        let oathAcceptedInSession = false;
+
+        window.acceptEthicsOath = function() {
+          oathAcceptedInSession = true;
+          const modal = document.getElementById("ethicsOathModal");
+          if (modal) modal.classList.remove("show");
+          const nameInput = document.getElementById("pharmacyName");
+          if (nameInput) nameInput.focus();
         };
 
-        const curDigits = digitsOnly(localStorage.getItem("userPhone") || "");
-        const isAdmin = Boolean(curDigits) && (
-          curDigits === ADMIN_NUMBER ||
-          (tail9(curDigits).length === 9 && tail9(curDigits) === tail9(ADMIN_NUMBER))
-        );
+        window.rejectEthicsOath = function() {
+          window.location.href = "index.html";
+        };
 
-        let isPharmacist = (localStorage.getItem("accountType") === "pharmacist");
-        if (!isPharmacist && curDigits && typeof db !== "undefined" && db) {
-          try {
-            const directSnap = await db.collection("pharmacies").doc(curDigits).get();
-            if (directSnap.exists) {
-              isPharmacist = true;
-            } else {
-              const qSnap = await db.collection("pharmacies").where("phone", "==", curDigits).limit(1).get();
-              if (!qSnap.empty) isPharmacist = true;
-            }
-          } catch (_) {}
-        }
-
-        if (isPharmacist) {
-          localStorage.setItem("accountType", "pharmacist");
-        }
-
-        const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
-        sidebars.forEach((sb) => {
-          if (!sb.querySelector('a[href="pharmacist-replies.html"]')) {
-            const aReplies = document.createElement("a");
-            aReplies.href = "pharmacist-replies.html";
-            aReplies.setAttribute("data-ph-role", "pharmacist");
-            aReplies.style.cssText = "font-weight: bold; background: #0369a1; color: white;";
-            aReplies.textContent = "📩 الرد على الأسئلة";
-            sb.appendChild(aReplies);
+        window.checkPharmacyNameAndShowOathIfMissing = function(hasDocPharmacyName = false) {
+          if (oathAcceptedInSession) return;
+          const inputVal = String(document.getElementById("pharmacyName")?.value || "").trim();
+          const hasAnyName = Boolean(inputVal || hasDocPharmacyName);
+          const modal = document.getElementById("ethicsOathModal");
+          if (!modal) return;
+          if (!hasAnyName) {
+            modal.classList.add("show");
+          } else {
+            modal.classList.remove("show");
           }
-
-          if (!sb.querySelector('a[href="addph.html"]')) {
-            const aEdit = document.createElement("a");
-            aEdit.href = "addph.html";
-            aEdit.setAttribute("data-ph-role", "pharmacist");
-            aEdit.style.cssText = "font-weight: bold; background: #0f766e; color: white;";
-            aEdit.textContent = "✏️ تعديل بيانات الصيدلية";
-            sb.appendChild(aEdit);
-          }
-
-          if (!sb.querySelector('a[href="pharmacies.html"]')) {
-            const aAdmin = document.createElement("a");
-            aAdmin.id = "adminPharmaciesLink";
-            aAdmin.href = "pharmacies.html";
-            aAdmin.setAttribute("data-ph-role", "admin");
-            aAdmin.style.cssText = "font-weight: bold; background: #0f766e; color: white;";
-            aAdmin.textContent = "🏥 إدارة الصيدليات وجلسات الواتساب";
-            sb.appendChild(aAdmin);
-          }
-        });
-
-        document.querySelectorAll('a[href="pharmacist-replies.html"], a[href="addph.html"][data-ph-role="pharmacist"]').forEach((el) => {
-          el.style.setProperty("display", isPharmacist ? "block" : "none", "important");
-        });
-
-        document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
-          el.style.setProperty("display", isAdmin ? "block" : "none", "important");
-        });
+        };
       })();
     </script>
 
-    <script>
-      (async function ensureAllSidebarButtonsAndRoles() {
-        const ADMIN_PHONE = "249128514785";
-        const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
-        const tail9 = (v) => {
-          const d = digitsOnly(v);
-          return d.length > 9 ? d.slice(-9) : d;
-        };
+<script src="sidebar-menu.js"></script>
 
-        const digits = digitsOnly(localStorage.getItem("userPhone") || "");
-        const isAdmin = Boolean(digits) && (
-          digits === ADMIN_PHONE ||
-          (tail9(digits).length === 9 && tail9(digits) === tail9(ADMIN_PHONE))
-        );
+<script>
+(function initIncomingAsksCounterInAddph() {
+  const digitsOnly = (v) => String(v || "").replace(/\D/g, "");
+  const isSudan12 = (d) => /^249\d{9}$/.test(digitsOnly(d));
+  const tail9 = (v) => {
+    const d = digitsOnly(v);
+    return d.length > 9 ? d.slice(-9) : d;
+  };
+  const isInSudan = (latVal, lngVal) => {
+    const lat = parseFloat(latVal), lng = parseFloat(lngVal);
+    return !isNaN(lat) && !isNaN(lng) && lat >= 3.5 && lat <= 23.0 && lng >= 21.5 && lng <= 39.0;
+  };
+  const haversineKm = (lat1, lng1, lat2, lng2) => {
+    const toRad = (v) => (Number(v) * Math.PI) / 180;
+    const R = 6371;
+    const dLat = toRad(Number(lat2) - Number(lat1));
+    const dLng = toRad(Number(lng2) - Number(lng1));
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
 
-        let isPharmacist = localStorage.getItem("accountType") === "pharmacist";
-        let phName = String(localStorage.getItem("pharmacyName") || "").trim();
+  function getSeenSet(phDigits) {
+    try {
+      const raw = localStorage.getItem("seenAsks_" + (phDigits || "default"));
+      const arr = raw ? JSON.parse(raw) : [];
+      return new Set(Array.isArray(arr) ? arr.map(String) : []);
+    } catch (_) {
+      return new Set();
+    }
+  }
 
-        if (digits && typeof db !== "undefined" && db) {
-          try {
-            const dSnap = await db.collection("pharmacies").doc(digits).get();
-            if (dSnap.exists) {
-              const d = dSnap.data() || {};
-              isPharmacist = true;
-              phName = String(d.name || d.pharmacyName || phName || "").trim();
-            }
-            if (!isPharmacist) {
-              const qSnap = await db.collection("pharmacies").where("phone", "==", digits).limit(1).get();
-              if (!qSnap.empty) {
-                const d = qSnap.docs[0].data() || {};
-                isPharmacist = true;
-                phName = String(d.name || d.pharmacyName || phName || "").trim();
-              }
-            }
-          } catch (_) {}
+  function isTargeted(docData, myDigits, phDoc) {
+    if (!docData || !isSudan12(myDigits)) return false;
+    const myTail = tail9(myDigits);
+    const samePhone = (raw) => {
+      const d = digitsOnly(raw);
+      if (!isSudan12(d)) return false;
+      return d === myDigits || (myTail.length === 9 && tail9(d) === myTail);
+    };
+
+    if ([docData.targetPharmacyPhone, docData.targetPharmacyId, docData.pharmacyPhone, docData.pharmacyId].some(samePhone)) {
+      return true;
+    }
+
+    const lists = [
+      docData.targetPharmacies,
+      docData.targetedPharmacies,
+      docData.sentToPharmacies,
+      docData.matchedPharmacies,
+      docData.nearbyPharmacies
+    ];
+    for (const col of lists) {
+      if (!col) continue;
+      if (Array.isArray(col)) {
+        for (const item of col) {
+          if (typeof item === "string" || typeof item === "number") {
+            if (samePhone(item)) return true;
+          } else if (item && typeof item === "object") {
+            if (samePhone(item.phone || item.pharmacyPhone || item.pharmacyId || item.id || item.sessionId)) return true;
+          }
         }
-
-        if (isPharmacist) localStorage.setItem("accountType", "pharmacist");
-        if (phName) localStorage.setItem("pharmacyName", phName);
-
-        const sessionEl = document.getElementById("sessionInfo");
-        if (sessionEl) {
-          sessionEl.textContent = (isPharmacist && phName) ? phName : (digits || "غير مسجل");
+      } else if (typeof col === "object") {
+        for (const [k, v] of Object.entries(col)) {
+          if (samePhone(k)) return true;
+          if (v && typeof v === "object" && samePhone(v.phone || v.pharmacyPhone || v.pharmacyId || v.sessionId)) return true;
         }
+      }
+    }
 
-        const menuItems = [
-          { href: "profile.html", label: "⚙️ تعديل الملف الشخصي والموقع", bg: "#495057", role: "all" },
-          { href: "index.html", label: "💊 صفحة الاستعلام عن دواء", bg: "#495057", role: "all" },
-          { href: "history.html", label: "📜 الأسئلة السابقة", bg: "#0284c7", role: "all" },
-          { href: "notifications.html", label: "🔔 الإشعارات", bg: "#475569", role: "all" },
-          { href: "daway.html", label: "📱 تحميل تطبيق دواي السودان", bg: "#495057", role: "all" },
-          { href: "pharmacist-replies.html", label: "📩 الرد على الأسئلة الواردة", bg: "#0369a1", role: "pharmacist" },
-          { href: "addph.html", label: "✏️ تعديل بيانات الصيدلية", bg: "#0f766e", role: "pharmacist" },
-          { href: "pharmacies.html", label: "🏥 إدارة الصيدليات وجلسات الواتساب", bg: "#0f766e", role: "admin" }
-        ];
+    const askLat = parseFloat(docData.lat ?? docData.userLat ?? docData.latitude);
+    const askLng = parseFloat(docData.lng ?? docData.userLng ?? docData.longitude);
+    const phLat = parseFloat(phDoc && phDoc.lat);
+    const phLng = parseFloat(phDoc && phDoc.lng);
+    const rangeKm = parseFloat(docData.range ?? docData.searchRange);
+    if (isInSudan(askLat, askLng) && isInSudan(phLat, phLng) && !isNaN(rangeKm) && rangeKm > 0) {
+      if (haversineKm(askLat, askLng, phLat, phLng) <= rangeKm) return true;
+    }
+    return false;
+  }
 
-        const sidebars = document.querySelectorAll("#sidebar, .sidebar, nav.sidebar");
-        sidebars.forEach((sb) => {
-          const prevContainer = sb.querySelector("#previousQuestionsContainer");
-          menuItems.forEach((item) => {
-            let link = sb.querySelector('a[href="' + item.href + '"]');
-            if (!link) {
-              link = document.createElement("a");
-              link.href = item.href;
-              link.textContent = item.label;
-              link.style.cssText = "font-weight: bold; background: " + item.bg + "; color: white;";
-              if (item.href === "pharmacies.html") {
-                link.id = "adminPharmaciesLink";
-              }
-              if (prevContainer) {
-                sb.insertBefore(link, prevContainer);
-              } else {
-                sb.appendChild(link);
-              }
-            }
-            link.setAttribute("data-menu-role", item.role);
+  function setBadgeCount(count) {
+    const badge = document.getElementById("incomingAsksCountBadge");
+    if (!badge) return;
+    const n = Math.max(0, Number(count) || 0);
+    badge.textContent = String(n);
+    badge.style.display = n > 0 ? "inline-block" : "inline-block";
+  }
 
-            if (item.role === "admin") {
-              link.style.setProperty("display", isAdmin ? "block" : "none", "important");
-            } else if (item.role === "pharmacist") {
-              link.style.setProperty("display", (isPharmacist || isAdmin) ? "block" : "none", "important");
-            } else {
-              link.style.setProperty("display", "block", "important");
-            }
-          });
-        });
+  window.openIncomingAsksAndResetCounter = function(ev) {
+    if (ev) ev.preventDefault();
+    const badge = document.getElementById("incomingAsksCountBadge");
+    if (badge) badge.textContent = "0";
+    window.location.href = "pharmacist-replies.html";
+  };
 
-        document.querySelectorAll('a[href="pharmacies.html"], #adminPharmaciesLink').forEach((el) => {
-          el.style.setProperty("display", isAdmin ? "block" : "none", "important");
-        });
-      })();
-    </script>
+  async function bindCounter() {
+    if (typeof db === "undefined" || !db || window.__addphIncomingCounterBound) return;
+    const phDigits = digitsOnly(
+      document.getElementById("pharmacyPhone")?.value || localStorage.getItem("userPhone") || ""
+    );
+    if (!isSudan12(phDigits)) return;
+
+    window.__addphIncomingCounterBound = true;
+    let phDoc = null;
+    try {
+      const dSnap = await db.collection("pharmacies").doc(phDigits).get();
+      if (dSnap.exists) phDoc = dSnap.data() || {};
+    } catch (_) {}
+
+    db.collection("AskPharmacy").onSnapshot((snap) => {
+      if (!snap) return;
+      const seenSet = getSeenSet(phDigits);
+      let newCount = 0;
+      snap.forEach((doc) => {
+        const d = doc.data() || {};
+        if (!isTargeted(d, phDigits, phDoc)) return;
+        const resps = Array.isArray(d.responses) ? d.responses : [];
+        const alreadyReplied = resps.some((r) => digitsOnly(r.pharmacyPhone || r.pharmacyId || r.phone) === phDigits);
+        const alreadySeen = seenSet.has(String(doc.id)) || Boolean(d.seenByPharmacy && d.seenByPharmacy[phDigits]);
+        if (!alreadyReplied && !alreadySeen) {
+          newCount++;
+        }
+      });
+      setBadgeCount(newCount);
+    }, () => {});
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => setTimeout(bindCounter, 400));
+  } else {
+    setTimeout(bindCounter, 400);
+  }
+  setTimeout(bindCounter, 1500);
+})();
+</script>
+
+<script src="add-pharmacy-form.js"></script>
 </body>
 </html>
