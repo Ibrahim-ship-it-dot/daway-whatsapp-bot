@@ -123,6 +123,11 @@
   .notif-card.unavail {
     border-right-color: #c62828;
   }
+  .notif-card.incoming-ask {
+    border-right-color: #d97706;
+    background: #fffbeb;
+    cursor: pointer;
+  }
   .notif-header {
     display: flex;
     justify-content: space-between;
@@ -134,6 +139,11 @@
     font-size: 16px;
     font-weight: 800;
     color: #111827;
+  }
+  .notif-header-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
   }
   .notif-badge {
     padding: 4px 12px;
@@ -148,6 +158,27 @@
   .notif-badge.unavail {
     background: #ffebee;
     color: #b71c1c;
+  }
+  .notif-badge.ask {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .notif-trash-btn {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .notif-trash-btn:hover {
+    background: #fecaca;
   }
   .notif-meta {
     font-size: 13px;
@@ -186,6 +217,20 @@
     font-size: 11px;
     line-height: 1.25;
     font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .notif-btn-ask {
+    background: #d97706;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 7px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 11.5px;
+    line-height: 1.25;
+    font-weight: 800;
+    cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
   }
@@ -230,7 +275,6 @@
     font-weight: 800;
     color: #334155;
   }
-
 </style>
 </head>
 <body>
@@ -282,6 +326,10 @@
     return String(v || "").replace(/\D/g, "");
   }
 
+  function isSudan12(d) {
+    return /^249\d{9}$/.test(cleanDigits(d));
+  }
+
   function phoneTail9(v) {
     const d = cleanDigits(v);
     return d.length > 9 ? d.slice(-9) : d;
@@ -293,14 +341,145 @@
     return cleanDigits(refPhone) === cleanDigits(phone) || (myTail.length >= 7 && phoneTail9(refPhone) === myTail);
   }
 
-  
   let currentUserCoords = null;
+  let lastResolvedCoords = null;
+  let currentPharmacyDoc = null;
+  let latestReplyDocs = [];
+  let latestIncomingAskNotifs = [];
+  let latestLoadedDocs = [];
+  let latestLoadedPhone = "";
+  const deletedNotifIds = new Set();
+
+  function getDismissedAskSet(phone) {
+    const keys = ["dismissedAsks_default"];
+    const d = cleanDigits(phone);
+    if (d) keys.push("dismissedAsks_" + d);
+    const merged = new Set();
+    keys.forEach((k) => {
+      try {
+        const arr = JSON.parse(localStorage.getItem(k) || "[]");
+        if (Array.isArray(arr)) arr.forEach((x) => merged.add(String(x)));
+      } catch (_) {}
+    });
+    return merged;
+  }
+
+  function dismissIncomingAskNotif(askId, phone) {
+    const idStr = String(askId || "");
+    if (!idStr) return;
+    const keys = ["dismissedAsks_default", "seenAsks_default"];
+    const d = cleanDigits(phone || latestLoadedPhone || localStorage.getItem("userPhone") || "");
+    if (d) {
+      keys.push("dismissedAsks_" + d);
+      keys.push("seenAsks_" + d);
+    }
+    keys.forEach((k) => {
+      try {
+        const arr = JSON.parse(localStorage.getItem(k) || "[]");
+        const next = Array.from(new Set([...(Array.isArray(arr) ? arr.map(String) : []), idStr]));
+        localStorage.setItem(k, JSON.stringify(next));
+      } catch (_) {}
+    });
+    latestIncomingAskNotifs = latestIncomingAskNotifs.filter((item) => String(item.askId || "") !== idStr);
+    rebuildCombinedList();
+  }
+
+  function openIncomingQuestionAndClear(askId) {
+    const phone = latestLoadedPhone || localStorage.getItem("userPhone") || "";
+    dismissIncomingAskNotif(askId, phone);
+    window.location.href = "pharmacist-replies.html";
+  }
+
+  function deleteSingleNotification(notifId, isIncomingAsk, askId, ev) {
+    if (ev) {
+      if (typeof ev.preventDefault === "function") ev.preventDefault();
+      if (typeof ev.stopPropagation === "function") ev.stopPropagation();
+      const btnEl = ev.target && typeof ev.target.closest === "function"
+        ? ev.target.closest(".notif-trash-btn")
+        : null;
+      const cardEl = btnEl
+        ? btnEl.closest(".notif-card")
+        : (ev.target && typeof ev.target.closest === "function" ? ev.target.closest(".notif-card") : null);
+      if (cardEl && cardEl.parentNode) {
+        cardEl.parentNode.removeChild(cardEl);
+      }
+    }
+    const phone = latestLoadedPhone || localStorage.getItem("userPhone") || "";
+    if (isIncomingAsk) {
+      dismissIncomingAskNotif(askId, phone);
+      return;
+    }
+    const idStr = String(notifId || "");
+    if (!idStr) return;
+    deletedNotifIds.add(idStr);
+    latestReplyDocs = latestReplyDocs.filter((item) => String(item.id || "") !== idStr);
+    latestLoadedDocs = latestLoadedDocs.filter((item) => String(item.id || "") !== idStr);
+    if (typeof db !== "undefined" && db) {
+      db.collection("notifications").doc(idStr).delete().catch(function() {});
+    }
+  }
+
+  function isAskTargetedToPharmacy(d, ph, phDoc) {
+    const cleanPh = cleanDigits(ph);
+    if (!d || !isSudan12(cleanPh)) return false;
+    const t9 = phoneTail9(cleanPh);
+    const same = (x) => {
+      const n = cleanDigits(x);
+      return isSudan12(n) && (n === cleanPh || (t9.length === 9 && phoneTail9(n) === t9));
+    };
+    if ([d.targetPharmacyPhone, d.targetPharmacyId, d.pharmacyPhone, d.pharmacyId].some(same)) return true;
+    for (const col of [d.targetPharmacies, d.targetedPharmacies, d.sentToPharmacies, d.matchedPharmacies, d.nearbyPharmacies]) {
+      if (!col) continue;
+      const items = Array.isArray(col) ? col : Object.entries(col).flatMap(([k, v]) => [k, v]);
+      for (const it of items) {
+        if (typeof it === "string" || typeof it === "number") {
+          if (same(it)) return true;
+        } else if (it && typeof it === "object" && same(it.phone || it.pharmacyPhone || it.pharmacyId || it.id || it.sessionId)) {
+          return true;
+        }
+      }
+    }
+    const aLat = parseFloat(d.lat ?? d.userLat ?? d.latitude);
+    const aLng = parseFloat(d.lng ?? d.userLng ?? d.longitude);
+    const pLat = parseFloat(phDoc && phDoc.lat);
+    const pLng = parseFloat(phDoc && phDoc.lng);
+    const rng = parseFloat(d.range ?? d.searchRange);
+    const inSd = (lat, lng) => Number.isFinite(lat) && Number.isFinite(lng) && lat >= 3.5 && lat <= 23 && lng >= 21.5 && lng <= 39;
+    return inSd(aLat, aLng) && inSd(pLat, pLng) && rng > 0 && calcDistanceKm(aLat, aLng, pLat, pLng) <= rng;
+  }
+
+  function extractTimestampMs(val) {
+    if (!val) return 0;
+    try {
+      if (typeof val.toMillis === "function") return val.toMillis();
+      if (typeof val.toDate === "function") return val.toDate().getTime();
+      const t = new Date(val).getTime();
+      return Number.isFinite(t) ? t : 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function rebuildCombinedList() {
+    const combined = [...latestReplyDocs, ...latestIncomingAskNotifs].sort((a, b) => {
+      const tb = extractTimestampMs(b.createdAt || b.updatedAt);
+      const ta = extractTimestampMs(a.createdAt || a.updatedAt);
+      if (tb !== ta) return tb - ta;
+      return String(b.createdAt || b.updatedAt || "").localeCompare(String(a.createdAt || a.updatedAt || ""));
+    });
+    renderNotifications(combined, latestLoadedPhone);
+  }
 
   function loadStoredUserCoords() {
+    if (lastResolvedCoords && Number.isFinite(lastResolvedCoords.lat) && Number.isFinite(lastResolvedCoords.lng)) {
+      currentUserCoords = lastResolvedCoords;
+      return currentUserCoords;
+    }
     const lat = parseFloat(localStorage.getItem("userLat") || localStorage.getItem("pharmacyLat") || "");
     const lng = parseFloat(localStorage.getItem("userLng") || localStorage.getItem("pharmacyLng") || "");
-    if (!isNaN(lat) && !isNaN(lng)) {
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
       currentUserCoords = { lat, lng };
+      lastResolvedCoords = { lat, lng };
     }
     return currentUserCoords;
   }
@@ -313,6 +492,7 @@
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         currentUserCoords = { lat, lng };
+        lastResolvedCoords = { lat, lng };
         try {
           localStorage.setItem("userLat", String(lat));
           localStorage.setItem("userLng", String(lng));
@@ -339,18 +519,17 @@
   }
 
   function formatPharmacyDistanceLabel(n) {
-    const uCoords = currentUserCoords || loadStoredUserCoords();
+    const uCoords = lastResolvedCoords || currentUserCoords || loadStoredUserCoords();
     const pLat = parseFloat(n.lat ?? n.pharmacyLat);
     const pLng = parseFloat(n.lng ?? n.pharmacyLng);
-    if (!uCoords || isNaN(pLat) || isNaN(pLng)) {
-      return "غير متوفر (حدد موقعك أولاً)";
+    if (!uCoords || !Number.isFinite(pLat) || !Number.isFinite(pLng)) {
+      return n._lastDistanceLabel || "غير متوفر (حدد موقعك أولاً)";
     }
     const km = calcDistanceKm(uCoords.lat, uCoords.lng, pLat, pLng);
-    if (isNaN(km)) return "غير متوفر";
-    if (km < 1) {
-      return Math.round(km * 1000) + " م";
-    }
-    return km.toFixed(1) + " كم";
+    if (!Number.isFinite(km)) return n._lastDistanceLabel || "غير متوفر";
+    const label = km < 1 ? (Math.round(km * 1000) + " م") : (km.toFixed(1) + " كم");
+    n._lastDistanceLabel = label;
+    return label;
   }
 
   function formatNotifDate(isoOrDate) {
@@ -373,8 +552,6 @@
   let currentNotifFilter = "unread";
   let currentNotifPage = 1;
   const NOTIFS_PER_PAGE = 7;
-  let latestLoadedDocs = [];
-  let latestLoadedPhone = "";
 
   function setNotifFilter(filterKey) {
     currentNotifFilter = filterKey || "unread";
@@ -419,13 +596,21 @@
   async function deleteAllNotifications() {
     const phone = localStorage.getItem("userPhone") || "";
     if (!phone || typeof db === "undefined" || !db) return;
-    if (!window.confirm("هل أنت متأكد من حذف كل الإشعارات الخاصة بحسابك؟")) return;
 
     const btn = document.getElementById("deleteAllNotifsBtn");
     if (btn) {
       btn.disabled = true;
       btn.textContent = "⏳ جاري الحذف...";
     }
+
+    latestIncomingAskNotifs.forEach((item) => dismissIncomingAskNotif(item.askId, phone));
+    latestReplyDocs = latestReplyDocs.filter((item) => {
+      if (!belongsToCurrentPhone(item, phone)) return true;
+      deletedNotifIds.add(String(item.id || ""));
+      return false;
+    });
+    rebuildCombinedList();
+
     try {
       const snap = await db.collection("notifications").get();
       const batch = db.batch();
@@ -433,6 +618,7 @@
       snap.forEach(function(doc) {
         const d = doc.data() || {};
         if (belongsToCurrentPhone(d, phone)) {
+          deletedNotifIds.add(String(doc.id));
           batch.delete(doc.ref);
           count++;
         }
@@ -440,9 +626,8 @@
       if (count > 0) {
         await batch.commit();
       }
-      latestLoadedDocs = latestLoadedDocs.filter(item => !belongsToCurrentPhone(item, phone));
-      renderNotifications(latestLoadedDocs, phone);
     } catch (_) {}
+
     if (btn) {
       btn.disabled = false;
       btn.textContent = "حذف الكل";
@@ -460,10 +645,10 @@
     db.collection("notifications").doc(notifId).set({ isRead: Boolean(nextReadState) }, { merge: true }).catch(function() {});
   }
 
-  
   function dedupeNotificationsList(items) {
     const seen = new Set();
     return items.filter(n => {
+      if (n._kind === "incoming_ask") return true;
       const minuteBucket = String(n.createdAt || n.updatedAt || "").slice(0, 16);
       const statusNorm = String(n.status || n.rawReplyText || "").trim();
       const phNorm = cleanDigits(n.pharmacyPhone || n.pharmacyId || "");
@@ -482,18 +667,18 @@
     if (!listEl) return;
 
     let filtered = dedupeNotificationsList(
-      docsList
-        .filter(item => belongsToCurrentPhone(item, phone))
-        .sort((a, b) => String(b.createdAt || b.updatedAt || "").localeCompare(String(a.createdAt || a.updatedAt || "")))
+      docsList.filter(item => item._kind === "incoming_ask" || belongsToCurrentPhone(item, phone))
     );
 
     if (currentNotifFilter === "available") {
       filtered = filtered.filter(n => {
+        if (n._kind === "incoming_ask") return false;
         const st = String(n.status || n.rawReplyText || "");
         return st.indexOf("متوفر") !== -1 && st.indexOf("غير") === -1;
       });
     } else if (currentNotifFilter === "unavailable") {
       filtered = filtered.filter(n => {
+        if (n._kind === "incoming_ask") return false;
         const st = String(n.status || n.rawReplyText || "");
         return st.indexOf("غير متوفر") !== -1 || st.indexOf("غير متصل") !== -1 || st.indexOf("متوقف") !== -1;
       });
@@ -528,6 +713,29 @@
     ` : "";
 
     listEl.innerHTML = pageItems.map(n => {
+      const idSafe = String(n.id || "").replace(/'/g, "\\'");
+      const askIdSafe = String(n.askId || "").replace(/'/g, "\\'");
+
+      if (n._kind === "incoming_ask") {
+        return `
+          <div class="notif-card incoming-ask" onclick="openIncomingQuestionAndClear('${askIdSafe}')">
+            <div class="notif-header">
+              <div class="notif-ph-name">📩 يوجد سؤال جديد لصيدليتك</div>
+              <div class="notif-header-right">
+                <span class="notif-badge ask">سؤال جديد</span>
+                <button type="button" class="notif-trash-btn" title="حذف الإشعار" onclick="deleteSingleNotification('${idSafe}', true, '${askIdSafe}', event)">🗑️</button>
+              </div>
+            </div>
+            <div class="notif-meta">
+              <div><strong>التاريخ:</strong> ${formatNotifDate(n.createdAt)}</div>
+            </div>
+            <div class="notif-actions">
+              <button type="button" class="notif-btn-ask" onclick="event.stopPropagation(); openIncomingQuestionAndClear('${askIdSafe}')">الانتقال لصفحة الأسئلة</button>
+            </div>
+          </div>
+        `;
+      }
+
       const statusStr = String(n.status || n.rawReplyText || "تم الرد");
       const isAvail = statusStr.includes("متوفر") && !statusStr.includes("غير");
       const cls = isAvail ? "avail" : "unavail";
@@ -541,7 +749,10 @@
         <div class="notif-card ${cls}">
           <div class="notif-header">
             <div class="notif-ph-name">🏥 ${n.pharmacyName || "صيدلية"}</div>
-            <span class="notif-badge ${cls}">${isAvail ? "✅ متوفر" : "❌ غير متوفر"}</span>
+            <div class="notif-header-right">
+              <span class="notif-badge ${cls}">${isAvail ? "✅ متوفر" : "❌ غير متوفر"}</span>
+              <button type="button" class="notif-trash-btn" title="حذف الإشعار" onclick="deleteSingleNotification('${idSafe}', false, '', event)">🗑️</button>
+            </div>
           </div>
           <div class="notif-meta">
             ${n.medicine ? `<div><strong>الدواء:</strong> ${n.medicine}</div>` : ""}
@@ -553,15 +764,16 @@
           <div class="notif-actions">
             ${mapHref ? `<a href="${mapHref}" target="_blank" class="notif-btn-map">📍 موقع الصيدلية في الخريطة</a>` : ""}
             ${contactClean ? `<a href="tel:${contactClean}" class="notif-btn-call">📞 اتصال (${contactClean})</a>` : ""}
-            <button type="button" onclick="toggleNotifReadState('${n.id}', ${n.isRead !== true})" style="background:#e2e8f0;color:#0f172a;border:none;padding:5px 8px;border-radius:7px;font-family:'Cairo',sans-serif;font-size:11px;line-height:1.25;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">${n.isRead === true ? "تحديد كغير مقروء" : "تحديد كمقروء"}</button>
+            <button type="button" onclick="toggleNotifReadState('${idSafe}', ${n.isRead !== true})" style="background:#e2e8f0;color:#0f172a;border:none;padding:5px 8px;border-radius:7px;font-family:'Cairo',sans-serif;font-size:11px;line-height:1.25;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">${n.isRead === true ? "تحديد كغير مقروء" : "تحديد كمقروء"}</button>
           </div>
         </div>
       `;
     }).join("") + paginationHtml;
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", async () => {
     const phone = localStorage.getItem("userPhone") || "";
+    latestLoadedPhone = phone;
     const badge = document.getElementById("accountRefBadge");
     if (badge) {
       badge.textContent = phone ? `مرجع الحساب (رقم السائل): ${phone}` : "يرجى تسجيل الدخول برقم الهاتف";
@@ -572,14 +784,50 @@
       return;
     }
 
+    const cleanPh = cleanDigits(phone);
+    if (isSudan12(cleanPh)) {
+      try {
+        const pSnap = await db.collection("pharmacies").doc(cleanPh).get();
+        if (pSnap.exists) currentPharmacyDoc = pSnap.data() || {};
+      } catch (_) {}
+    }
+
     db.collection("notifications").onSnapshot((snap) => {
       const all = [];
-      snap.forEach(doc => all.push({ id: doc.id, ...(doc.data() || {}) }));
-      renderNotifications(all, phone);
+      snap.forEach(doc => { if (!deletedNotifIds.has(String(doc.id))) all.push({ id: doc.id, ...(doc.data() || {}) }); });
+      latestReplyDocs = all;
+      rebuildCombinedList();
     }, (err) => {
       document.getElementById("notificationsList").innerHTML =
         `<div class="notif-empty" style="color:#b71c1c;">تعذر تحميل الإشعارات: ${err.message}</div>`;
     });
+
+    if (isSudan12(cleanPh)) {
+      db.collection("AskPharmacy").onSnapshot((snap) => {
+        if (!snap) return;
+        const dismissed = getDismissedAskSet(cleanPh);
+        const askNotifs = [];
+        snap.forEach((doc) => {
+          const d = doc.data() || {};
+          if (!isAskTargetedToPharmacy(d, cleanPh, currentPharmacyDoc)) return;
+          const replied = (Array.isArray(d.responses) ? d.responses : []).some(
+            (r) => cleanDigits(r && (r.pharmacyPhone || r.pharmacyId || r.phone)) === cleanPh
+          );
+          if (replied) return;
+          const askIdStr = String(doc.id);
+          if (dismissed.has(askIdStr)) return;
+          askNotifs.push({
+            id: "ask_" + askIdStr,
+            askId: askIdStr,
+            _kind: "incoming_ask",
+            isRead: false,
+            createdAt: d.createdAt || d.updatedAt || d.timestamp || ""
+          });
+        });
+        latestIncomingAskNotifs = askNotifs;
+        rebuildCombinedList();
+      }, () => {});
+    }
   });
 </script>
 
