@@ -876,6 +876,83 @@ window.addEventListener("load", async () => {
     }
 });
 
+function playNotificationChime() {
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+
+        const playTone = (freq, startOffset, duration) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, now + startOffset);
+            gain.gain.setValueAtTime(0.001, now + startOffset);
+            gain.gain.exponentialRampToValueAtTime(0.18, now + startOffset + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + startOffset + duration);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + startOffset);
+            osc.stop(now + startOffset + duration + 0.02);
+        };
+
+        playTone(880, 0, 0.14);
+        playTone(1174.66, 0.15, 0.22);
+
+        setTimeout(() => {
+            if (ctx && typeof ctx.close === "function") ctx.close().catch(() => {});
+        }, 1000);
+    } catch (_) {}
+}
+
+function showSystemTrayNotification(notif) {
+    if (!notif || typeof window === "undefined") return;
+    playNotificationChime();
+    if (!("Notification" in window)) return;
+
+    const statusStr = String(notif.status || notif.rawReplyText || "رد جديد");
+    const isAvail = statusStr.includes("متوفر") && !statusStr.includes("غير");
+    const title = `🔔 ${notif.pharmacyName || "صيدلية"} — ${isAvail ? "متوفر" : "غير متوفر"}`;
+    const body = `${notif.medicine ? "الدواء: " + notif.medicine + " | " : ""}الحالة: ${statusStr}`;
+    const tag = `reply-${notif.askId || notif.id || Date.now()}`;
+
+    const triggerTray = () => {
+        if (Notification.permission !== "granted") return;
+
+        if ("serviceWorker" in navigator && navigator.serviceWorker.ready) {
+            navigator.serviceWorker.ready.then((reg) => {
+                if (reg && typeof reg.showNotification === "function") {
+                    reg.showNotification(title, {
+                        body,
+                        icon: "/manifest.json",
+                        badge: "/manifest.json",
+                        tag,
+                        renotify: true,
+                        data: { url: "notifications.html" }
+                    }).catch(() => {
+                        new Notification(title, { body, tag });
+                    });
+                } else {
+                    new Notification(title, { body, tag });
+                }
+            }).catch(() => {
+                new Notification(title, { body, tag });
+            });
+        } else {
+            new Notification(title, { body, tag });
+        }
+    };
+
+    if (Notification.permission === "granted") {
+        triggerTray();
+    } else if (Notification.permission === "default") {
+        Notification.requestPermission().then((perm) => {
+            if (perm === "granted") triggerTray();
+        }).catch(() => {});
+    }
+}
+
 function showIncomingReplyToast(notif) {
     if (!notif || typeof document === "undefined") return;
     const statusStr = String(notif.status || notif.rawReplyText || "رد جديد");
@@ -946,6 +1023,7 @@ function initAccountNotificationsListener() {
                 if (belongsToUser && !seenNotifIds.has(change.doc.id)) {
                     seenNotifIds.add(change.doc.id);
                     showIncomingReplyToast(d);
+                    showSystemTrayNotification(d);
                 }
             }
         });
@@ -956,7 +1034,6 @@ window.addEventListener("DOMContentLoaded", () => {
     initAccountNotificationsListener();
     if (document.getElementById("pharmaciesContainer")) syncPharmacyCardsFromNotificationsLive();
 });
-
 
 function syncPharmacyCardsFromNotificationsLive(activeAskId = "") {
   const phone = localStorage.getItem("userPhone") || "";
@@ -1005,3 +1082,6 @@ function syncPharmacyCardsFromNotificationsLive(activeAskId = "") {
     }
   }, () => {});
 }
+
+if (window.location.search.includes("testNotif=1")) { window.addEventListener("load", () => setTimeout(() => window.testTrayNotification && window.testTrayNotification(), 800)); }
+

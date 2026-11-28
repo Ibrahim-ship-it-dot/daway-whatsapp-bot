@@ -1,4 +1,4 @@
-const CACHE_NAME = 'daway-sudan-v2';
+const CACHE_NAME = 'daway-sudan-v3';
 
 // قائمة الملفات الأساسية
 const urlsToCache = [
@@ -65,6 +65,24 @@ self.addEventListener('fetch', event => {
           return networkResponse;
         })
         .catch(() => caches.match('/offline.html'));
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification && event.notification.data && event.notification.data.url) || "/notifications.html";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ("focus" in client) {
+          client.navigate(targetUrl).catch(() => {});
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
     })
   );
 });
