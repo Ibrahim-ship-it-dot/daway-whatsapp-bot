@@ -16,52 +16,6 @@
 <button id="sidebarToggle" class="sidebar-toggle-button" onclick="toggleSidebar()">☰ </button>
 <button id="infoSidebarToggle" class="sidebar-toggle-button" onclick="toggleInfoSidebar()">💡</button>
 
-<style>
-  #resultsCenterNotifBtn {
-    position: fixed;
-    top: 14px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 9999;
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: #ffffff;
-    color: #0f172a;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.16);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    font-size: 19px;
-    cursor: pointer;
-  }
-  #resultsNotifBadgeCount {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    min-width: 19px;
-    height: 19px;
-    padding: 0 5px;
-    border-radius: 999px;
-    background: #ef4444;
-    color: #ffffff;
-    font-family: "Cairo", sans-serif;
-    font-size: 11px;
-    font-weight: 800;
-    line-height: 19px;
-    text-align: center;
-    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.45);
-    display: none;
-  }
-</style>
-<a id="resultsCenterNotifBtn" href="notifications.html" title="الإشعارات">
-  <span>🔔</span>
-  <span id="resultsNotifBadgeCount">0</span>
-</a>
-
-
 <div id="sidebar">
     <div class="sidebar-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;">
         <span id="sessionInfo" style="font-weight: 800; font-size: 13.5px; color: #ffffff; text-align: right; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
